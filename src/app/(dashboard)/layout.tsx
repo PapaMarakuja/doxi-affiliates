@@ -3,6 +3,8 @@ import { getAuthenticatedUser, logout } from "@/src/lib/auth/session";
 import { AuthService } from "@/src/services/auth.service";
 import DashboardLayout from "@/src/components/DashboardLayout";
 
+export const dynamic = "force-dynamic";
+
 export default async function AuthenticatedLayout({
   children,
 }: {

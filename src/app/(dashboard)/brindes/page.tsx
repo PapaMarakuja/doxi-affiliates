@@ -386,6 +386,7 @@ export default function BrindesPage() {
               marginBottom: '20px',
               transition: 'transform 0.3s ease',
               transform: isUnlocked ? 'scale(1.1)' : 'scale(1)',
+              flexShrink: 0,
             }}
           >
             <FontAwesomeIcon icon={getIcon(reward.icon_key)} />
@@ -536,21 +537,14 @@ export default function BrindesPage() {
     <div className='flex flex-col gap-8'>
       {/* HEADER GAMIFICADO */}
       <Card
+        className="p-6 sm:p-8"
         style={{
-          padding: '32px',
           background:
             'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
           border: '1px solid rgba(156, 39, 176, 0.2)',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            marginBottom: '32px',
-          }}
-        >
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 mb-8 text-center sm:text-left">
           <div
             style={{
               width: '56px',
@@ -563,11 +557,12 @@ export default function BrindesPage() {
               justifyContent: 'center',
               fontSize: '24px',
               boxShadow: '0 8px 16px rgba(156, 39, 176, 0.2)',
+              flexShrink: 0,
             }}
           >
             <FontAwesomeIcon icon={faCrown} />
           </div>
-          <div>
+          <div className="flex flex-col gap-1">
             <h2
               style={{
                 margin: 0,
@@ -580,9 +575,10 @@ export default function BrindesPage() {
             </h2>
             <p
               style={{
-                margin: '4px 0 0 0',
+                margin: 0,
                 color: 'var(--text-muted)',
                 fontSize: '15px',
+                lineHeight: '1.5',
               }}
             >
               Aproveite nossos bônus a cada ciclo e resgate presentes incríveis conforme

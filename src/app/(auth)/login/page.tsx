@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   description: 'Acesse seu painel de afiliado Doxi Wear.',
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function LoginPage() {
   const result = await getAuthenticatedUser();
 
