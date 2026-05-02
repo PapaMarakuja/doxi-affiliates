@@ -9,11 +9,13 @@ import {
   faRightFromBracket,
   faChevronDown,
   faBars,
+  faDog,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { User } from '@supabase/supabase-js';
 import { Profile } from '@/src/types';
 import { clearSidebarCache } from '@/src/lib/sidebar/sidebarService';
+import { AffiliateBenefitsModal } from './ui/AffiliateBenefitsModal';
 
 interface Props {
   sidebarCollapsed: boolean;
@@ -34,6 +36,7 @@ export default function DashboardHeader({
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [benefitsModalOpen, setBenefitsModalOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,6 +66,12 @@ export default function DashboardHeader({
   function handleOpenProfile() {
     setDropdownOpen(false);
     onOpenProfileModal();
+  }
+
+  function handleOpenBenefits(e: React.MouseEvent) {
+    e.preventDefault();
+    setDropdownOpen(false);
+    setBenefitsModalOpen(true);
   }
 
   return (
@@ -112,12 +121,17 @@ export default function DashboardHeader({
                 </span>
                 Meu Perfil
               </button>
-              {/* <a href="#" className="dash-dropdown-item" role="menuitem">
+              <button
+                onClick={handleOpenBenefits}
+                className="dash-dropdown-item"
+                role="menuitem"
+                id="header-menu-benefits"
+              >
                 <span className="dash-dropdown-icon">
-                  <FontAwesomeIcon icon={faGear} />
+                  <FontAwesomeIcon icon={faDog} />
                 </span>
-                Configurações
-              </a> */}
+                Doxi Club
+              </button>
               <div className='dash-dropdown-divider' />
               <button
                 onClick={handleLogout}
@@ -135,6 +149,10 @@ export default function DashboardHeader({
           )}
         </div>
       </header>
+      <AffiliateBenefitsModal
+        isOpen={benefitsModalOpen}
+        onClose={() => setBenefitsModalOpen(false)}
+      />
     </>
   );
 }

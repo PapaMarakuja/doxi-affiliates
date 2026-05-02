@@ -46,7 +46,7 @@ function isAdminApiRoute(pathname: string, method: string): boolean {
   if (pathname === "/api/users") return true;
 
   // Gestão de Afiliados e Perfis
-  if (pathname.startsWith("/api/affiliates")) return true;
+  if (pathname.startsWith("/api/affiliates") && !pathname.startsWith("/api/affiliates/me")) return true;
   if (pathname.startsWith("/api/profiles")) return true;
 
   // Conquistas (Gestão é Admin, exceto Claim que é do Afiliado)

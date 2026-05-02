@@ -41,11 +41,11 @@ export function LoginForm() {
         disabled={loading}
         icon={<FontAwesomeIcon icon={faLock} />}
         error={errors.password}
-        // rightLabel={
-        //   <a href="#" className="login-forgot-link">
-        //     Esqueceu a senha?
-        //   </a>
-        // }
+      // rightLabel={
+      //   <a href="#" className="login-forgot-link">
+      //     Esqueceu a senha?
+      //   </a>
+      // }
       />
 
       <Button type='submit' loading={loading}>
