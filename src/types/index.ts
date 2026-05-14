@@ -8,3 +8,4 @@ export * from "./syncState";
 export * from "./profile";
 export * from "./sidebarItem";
 export * from "./payout";
+export * from "./customer";

@@ -12,6 +12,9 @@ const ORDER_FIELDS = [
   "id",
   "name",
   "created_at",
+  "updated_at",
+  "cancelled_at",
+  "cancel_reason",
   "financial_status",
   "current_total_price",
   "total_discounts",
@@ -19,6 +22,7 @@ const ORDER_FIELDS = [
   "currency",
   "discount_codes",
   "line_items",
+  "customer",
 ].join(",");
 
 export class ShopifyService {
@@ -33,7 +37,9 @@ export class ShopifyService {
     };
   }
 
-  private async fetchFromShopify<T>(endpoint: string): Promise<T> {
+  private async fetchFromShopify<T>(
+    endpoint: string
+  ): Promise<{ data: T; nextPageInfo: string | undefined }> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       headers: this.headers,
       cache: "no-store",
@@ -45,7 +51,23 @@ export class ShopifyService {
       );
     }
 
-    return response.json() as Promise<T>;
+    const data = (await response.json()) as T;
+
+    const linkHeader = response.headers.get("Link");
+    let nextPageInfo: string | undefined;
+
+    if (linkHeader) {
+      const links = linkHeader.split(",");
+      const nextLink = links.find((link) => link.includes('rel="next"'));
+      if (nextLink) {
+        const match = nextLink.match(/page_info=([^>;&\s]+)/);
+        if (match) {
+          nextPageInfo = match[1];
+        }
+      }
+    }
+
+    return { data, nextPageInfo };
   }
 
   /**
@@ -54,27 +76,32 @@ export class ShopifyService {
    * Suporta paginação automática.
    */
   async getAllOrders(sinceDate?: string): Promise<ShopifyOrder[]> {
+    console.log('🚀 ~ getAllOrders ~ sinceDate:', sinceDate)
     const allOrders: ShopifyOrder[] = [];
     let hasMore = true;
     let pageInfo: string | undefined;
 
     while (hasMore) {
-      const params = new URLSearchParams({
-        status: "any",
-        limit: "250",
-        fields: ORDER_FIELDS,
-      });
+      let endpoint: string;
+      if (pageInfo) {
+        endpoint = `/orders.json?page_info=${pageInfo}&limit=250`;
+      } else {
+        const params = new URLSearchParams({
+          status: "any",
+          limit: "250",
+          fields: ORDER_FIELDS,
+        });
 
-      if (sinceDate) params.set("created_at_min", sinceDate);
-      if (pageInfo) params.set("page_info", pageInfo);
+        if (sinceDate) params.set("updated_at_min", sinceDate);
+        endpoint = `/orders.json?${params.toString()}`;
+      }
 
-      const endpoint = `/orders.json?${params.toString()}`;
-      const data = await this.fetchFromShopify<ShopifyOrdersResponse>(endpoint);
+      const { data, nextPageInfo } = await this.fetchFromShopify<ShopifyOrdersResponse>(endpoint);
 
       allOrders.push(...data.orders);
 
-      hasMore = data.orders.length === 250;
-      pageInfo = undefined;
+      pageInfo = nextPageInfo;
+      hasMore = !!pageInfo;
     }
 
     return allOrders;
@@ -98,19 +125,22 @@ export class ShopifyService {
       let hasMore = true;
 
       while (hasMore) {
-        const params = new URLSearchParams({
-          discount_code: coupon.code,
-          status: "any",
-          limit: "250",
-          fields: ORDER_FIELDS,
-        });
+        let endpoint: string;
+        if (pageInfo) {
+          endpoint = `/orders.json?page_info=${pageInfo}&limit=250`;
+        } else {
+          const params = new URLSearchParams({
+            discount_code: coupon.code,
+            status: "any",
+            limit: "250",
+            fields: ORDER_FIELDS,
+          });
 
-        if (sinceDate) params.set("created_at_min", sinceDate);
-        if (pageInfo) params.set("page_info", pageInfo);
+          if (sinceDate) params.set("updated_at_min", sinceDate);
+          endpoint = `/orders.json?${params.toString()}`;
+        }
 
-        const endpoint = `/orders.json?${params.toString()}`;
-
-        const data = await this.fetchFromShopify<ShopifyOrdersResponse>(endpoint);
+        const { data, nextPageInfo } = await this.fetchFromShopify<ShopifyOrdersResponse>(endpoint);
 
         for (const order of data.orders) {
           if (!seenOrderIds.has(order.id)) {
@@ -119,8 +149,8 @@ export class ShopifyService {
           }
         }
 
-        hasMore = data.orders.length === 250;
-        pageInfo = undefined;
+        pageInfo = nextPageInfo;
+        hasMore = !!pageInfo;
       }
     }
 
@@ -129,7 +159,7 @@ export class ShopifyService {
 
   async getOrderById(shopifyOrderId: string): Promise<ShopifyOrder | null> {
     try {
-      const data = await this.fetchFromShopify<{ order: ShopifyOrder }>(
+      const { data } = await this.fetchFromShopify<{ order: ShopifyOrder }>(
         `/orders/${shopifyOrderId}.json`
       );
       return data.order;

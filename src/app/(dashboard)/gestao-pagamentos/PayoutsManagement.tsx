@@ -14,11 +14,20 @@ import {
   faCheckCircle,
   faHandHoldingDollar,
   faSearch,
-  faPlus
+  faPlus,
+  faUndo,
+  faTimesCircle,
+  faTrash,
+  faDollar,
+  faListAlt,
+  faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
 import { formatCurrency, formatDate } from "@/src/lib/utils";
 import { Payout, PayoutSummary } from "@/src/types/payout";
 import { PayoutCreateModal } from "./PayoutCreateModal";
+import { useConfirmDialog } from "@/src/contexts/ConfirmDialogContext";
+import { AffiliateOrdersModal } from "@/src/components/ui/AffiliateOrdersModal";
+import { BatchPayoutModal } from "@/src/components/ui/BatchPayoutModal";
 
 export function PayoutsManagement() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
@@ -28,17 +37,21 @@ export function PayoutsManagement() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [ordersModalAffiliate, setOrdersModalAffiliate] = useState<{ id: string; name: string } | null>(null);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const { addToast } = useToast();
+  const confirm = useConfirmDialog();
 
   const fetchPayouts = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.append("status", statusFilter);
-      
+
       const res = await fetch(`/api/admin/payouts?${params.toString()}`);
       const result = await (res.headers.get("content-type")?.includes("application/json") ? res.json() : null);
-      
+
       if (res.ok) {
         setPayouts(result?.data || []);
       } else {
@@ -57,7 +70,7 @@ export function PayoutsManagement() {
     try {
       const res = await fetch("/api/admin/payouts/summary");
       const result = await (res.headers.get("content-type")?.includes("application/json") ? res.json() : null);
-      
+
       if (res.ok) {
         setSummary(result?.data);
       }
@@ -72,6 +85,73 @@ export function PayoutsManagement() {
     fetchPayouts();
     fetchSummary();
   }, [fetchPayouts, fetchSummary]);
+
+  const handleUpdateStatus = async (id: string, status: Payout["status"]) => {
+    setActionLoading(id);
+    try {
+      const res = await fetch(`/api/admin/payouts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const result = await (res.headers.get("content-type")?.includes("application/json") ? res.json() : null);
+      if (res.ok) {
+        addToast({ message: status === "paid" ? "Pagamento registrado com sucesso" : "Pagamento revertido para pendente", type: "success" });
+
+        // Update local state instead of refetching
+        setPayouts(prev => prev.map(p => {
+          if (p.id === id) {
+            return {
+              ...p,
+              status,
+              paid_at: status === "paid" ? new Date().toISOString() : null
+            };
+          }
+          return p;
+        }));
+
+        fetchSummary(); // Summary still needs to be updated
+      } else {
+        addToast({ message: result?.error || "Erro ao atualizar pagamento", type: "error" });
+      }
+    } catch (err) {
+      console.error("[PayoutsManagement] handleUpdateStatus error:", err);
+      addToast({ message: "Erro de conexão ao atualizar pagamento", type: "error" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeletePayout = async (id: string) => {
+    const confirmed = await confirm({
+      title: "Excluir Pagamento",
+      message: "Tem certeza que deseja excluir este registro de pagamento? Esta ação não pode ser desfeita.",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      type: "danger"
+    });
+
+    if (!confirmed) return;
+
+    setActionLoading(id);
+    try {
+      const res = await fetch(`/api/admin/payouts/${id}`, { method: "DELETE" });
+      const result = await (res.headers.get("content-type")?.includes("application/json") ? res.json() : null);
+
+      if (res.ok) {
+        addToast({ message: "Pagamento excluído com sucesso", type: "success" });
+        setPayouts(prev => prev.filter(p => p.id !== id));
+        fetchSummary();
+      } else {
+        addToast({ message: result?.error || "Erro ao excluir pagamento", type: "error" });
+      }
+    } catch (err) {
+      console.error("[PayoutsManagement] handleDeletePayout error:", err);
+      addToast({ message: "Erro de conexão ao excluir pagamento", type: "error" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const filteredPayouts = payouts.filter(p =>
     (p as any).affiliates?.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -100,16 +180,17 @@ export function PayoutsManagement() {
       header: "Status",
       render: (item) => {
         const styles: Record<string, any> = {
-          paid: { bg: "var(--success-bg)", color: "var(--success-text)", label: "Pago" },
-          pending: { bg: "var(--warning-bg)", color: "var(--warning-text)", label: "Pendente" },
-          cancelled: { bg: "var(--error-bg)", color: "var(--error-text)", label: "Cancelado" },
+          paid: { bg: "rgba(34,197,94,0.12)", color: "var(--success)", label: "Pago", icon: faCheckCircle },
+          pending: { bg: "rgba(245,158,11,0.10)", color: "var(--warning)", label: "Pendente", icon: faClock },
+          cancelled: { bg: "rgba(239,68,68,0.10)", color: "var(--error)", label: "Cancelado", icon: faTimesCircle },
         };
         const style = styles[item.status || "pending"];
         return (
           <span style={{
             padding: "4px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: 600,
-            background: style.bg, color: style.color
+            background: style.bg, color: style.color, display: "inline-flex", alignItems: "center", gap: "6px"
           }}>
+            <FontAwesomeIcon icon={style.icon} style={{ fontSize: "11px" }} />
             {style.label}
           </span>
         );
@@ -126,6 +207,81 @@ export function PayoutsManagement() {
       header: "Pago em",
       sortable: true,
       render: (item) => <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{item.paid_at ? formatDate(item.paid_at, true) : "-"}</span>
+    },
+    {
+      key: "actions",
+      header: "Ações",
+      style: { width: "1%" },
+      render: (item) => (
+        <div className="flex justify-center items-center gap-2">
+          {item.status === "pending" ? (
+            <Button
+              variant="success"
+              outline
+              loading={actionLoading === item.id}
+              style={{
+                minHeight: "unset",
+                width: "auto",
+                fontSize: "12px",
+                padding: '0.5rem',
+              }}
+              onClick={() => handleUpdateStatus(item.id, "paid")}
+            >
+              {actionLoading !== item.id && <FontAwesomeIcon icon={faDollar} />}
+            </Button>
+          ) : item.status === "paid" ? (
+            <Button
+              variant="warning"
+              outline
+              loading={actionLoading === item.id}
+              style={{
+                minHeight: "unset",
+                width: "auto",
+                fontSize: "12px",
+                padding: '0.5rem',
+              }}
+              onClick={() => handleUpdateStatus(item.id, "pending")}
+              title="Reverter para pendente"
+            >
+              {actionLoading !== item.id && <FontAwesomeIcon icon={faUndo} />}
+            </Button>
+          ) : null}
+
+          <Button
+            variant="danger"
+            outline
+            loading={actionLoading === item.id}
+            style={{
+              minHeight: "unset",
+              width: "auto",
+              fontSize: "12px",
+              padding: '0.5rem',
+            }}
+            onClick={() => handleDeletePayout(item.id)}
+            title="Excluir pagamento"
+          >
+            {actionLoading !== item.id && <FontAwesomeIcon icon={faTrash} />}
+          </Button>
+
+          <Button
+            variant="info"
+            outline
+            style={{
+              minHeight: "unset",
+              width: "auto",
+              fontSize: "12px",
+              padding: '0.5rem',
+            }}
+            onClick={() => setOrdersModalAffiliate({
+              id: (item as any).affiliates?.id || item.affiliate_id || "",
+              name: (item as any).affiliates?.name || "Afiliado"
+            })}
+            title="Ver vendas"
+          >
+            <FontAwesomeIcon icon={faListAlt} />
+          </Button>
+        </div>
+      )
     }
   ];
 
@@ -136,15 +292,21 @@ export function PayoutsManagement() {
           <h2 className="page-title">Gestão de Pagamentos</h2>
           <p className="page-subtitle">Acompanhe e realize pagamentos para seus afiliados.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} style={{ width: "auto" }}>
-          <FontAwesomeIcon icon={faPlus} style={{ marginRight: "8px" }} />
-          Gerar Pagamento
-        </Button>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <Button onClick={() => setIsBatchModalOpen(true)} style={{ width: "auto" }} variant="info" outline>
+            <FontAwesomeIcon icon={faLayerGroup} style={{ marginRight: "8px" }} />
+            Gerar Todos
+          </Button>
+          <Button onClick={() => setIsModalOpen(true)} style={{ width: "auto" }}>
+            <FontAwesomeIcon icon={faPlus} style={{ marginRight: "8px" }} />
+            Gerar Pagamento
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "var(--success-bg)", color: "var(--success-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(34,197,94,0.12)", color: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
             <FontAwesomeIcon icon={faCheckCircle} />
           </div>
           <div>
@@ -156,7 +318,7 @@ export function PayoutsManagement() {
         </Card>
 
         <Card style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "var(--warning-bg)", color: "var(--warning-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(245,158,11,0.10)", color: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
             <FontAwesomeIcon icon={faClock} />
           </div>
           <div>
@@ -168,7 +330,7 @@ export function PayoutsManagement() {
         </Card>
 
         <Card style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "var(--info-bg)", color: "var(--info-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(59,130,246,0.10)", color: "var(--info)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
             <FontAwesomeIcon icon={faHandHoldingDollar} />
           </div>
           <div>
@@ -236,6 +398,22 @@ export function PayoutsManagement() {
       <PayoutCreateModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          fetchPayouts();
+          fetchSummary();
+        }}
+      />
+
+      <AffiliateOrdersModal
+        isOpen={!!ordersModalAffiliate}
+        onClose={() => setOrdersModalAffiliate(null)}
+        affiliateId={ordersModalAffiliate?.id || ""}
+        affiliateName={ordersModalAffiliate?.name}
+      />
+
+      <BatchPayoutModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
         onSuccess={() => {
           fetchPayouts();
           fetchSummary();

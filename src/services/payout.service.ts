@@ -16,7 +16,7 @@ export class PayoutService {
     if (!affiliate) throw new Error("Afiliado não encontrado");
 
     const rate = affiliate.commission_rate ?? 0;
-    // Pega o início do mês do cadastro conforme regra do BCC
+    // Pega o início de Abril/2026 conforme solicitado (anteriormente início do mês do cadastro)
     const registrationStartDate = getAffiliateDataStartDate(affiliate.created_at) || new Date(0).toISOString();
 
     // Get orders, achievements, and existing payouts

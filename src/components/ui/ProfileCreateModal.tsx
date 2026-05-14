@@ -39,12 +39,14 @@ interface ProfileCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProfileCreated: (profile: Profile) => void;
+  createAffiliate?: boolean;
 }
 
 export function ProfileCreateModal({
   isOpen,
   onClose,
   onProfileCreated,
+  createAffiliate,
 }: ProfileCreateModalProps) {
   const { addToast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -106,6 +108,7 @@ export function ProfileCreateModal({
           contact_email: contactEmail.trim() || null,
           contact_phone: contactPhone.trim() || null,
           pix_key: pixKey.trim() || null,
+          createAffiliate,
         }),
       });
 

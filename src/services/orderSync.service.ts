@@ -92,17 +92,18 @@ export class OrderSyncService {
   private mapShopifyOrders(
     shopifyOrders: ShopifyOrder[],
     codeToIdMap: Map<string, string>,
-    codeToAffiliateIdMap: Map<string, string>
+    codeToAffiliateIdMap: Map<string, string>,
+    shopifyCustomerIdToDbIdMap: Map<string, string>
   ): Omit<Orders, "id" | "synced_at">[] {
     return shopifyOrders.map((shopifyOrder) => {
       const firstDiscountCode =
-        shopifyOrder.discount_codes.length > 0
+        shopifyOrder.discount_codes && shopifyOrder.discount_codes.length > 0
           ? shopifyOrder.discount_codes[0].code
           : null;
 
       // Percorre todos os códigos de desconto da order e encontra
       // o primeiro que bate com um cupom cadastrado no sistema.
-      const matchedCode = shopifyOrder.discount_codes
+      const matchedCode = (shopifyOrder.discount_codes || [])
         .map((d) => d.code.toUpperCase())
         .find((code) => codeToIdMap.has(code));
 
@@ -119,6 +120,23 @@ export class OrderSyncService {
         ? parseFloat(shopifyOrder.total_shipping_price_set.shop_money.amount)
         : 0;
 
+      // Map Shopify financial_status to DB enum ("paid" | "refunded" | "processing" | "unpaid")
+      let mappedStatus: Orders["financial_status"] = "unpaid";
+      const sfStatus = shopifyOrder.financial_status?.toLowerCase();
+      
+      if (shopifyOrder.cancelled_at) {
+        // If cancelled, it's refunded (if it was paid or already refunded) or just unpaid.
+        mappedStatus = (sfStatus === "paid" || sfStatus === "refunded" || sfStatus === "partially_refunded") ? "refunded" : "unpaid";
+      } else if (sfStatus === "paid") {
+        mappedStatus = "paid";
+      } else if (sfStatus === "refunded" || sfStatus === "voided" || sfStatus === "partially_refunded") {
+        mappedStatus = "refunded";
+      } else if (sfStatus === "authorized" || sfStatus === "partially_paid") {
+        mappedStatus = "processing";
+      } else {
+        mappedStatus = "unpaid"; // catches "pending" and anything else
+      }
+
       return {
         shopify_order_id: String(shopifyOrder.id),
         coupon_code: firstDiscountCode,
@@ -128,8 +146,14 @@ export class OrderSyncService {
         total_discounts: parseFloat(shopifyOrder.total_discounts || "0"),
         shipping_cost: shippingCost,
         currency: shopifyOrder.currency,
-        financial_status: shopifyOrder.financial_status as Orders["financial_status"],
+        financial_status: mappedStatus,
+        customer_id: shopifyOrder.customer
+          ? shopifyCustomerIdToDbIdMap.get(String(shopifyOrder.customer.id)) ?? null
+          : null,
         created_at: shopifyOrder.created_at,
+        updated_at: shopifyOrder.updated_at || null,
+        cancelled_at: shopifyOrder.cancelled_at || null,
+        cancel_reason: shopifyOrder.cancel_reason || null,
       };
     });
   }
@@ -184,7 +208,36 @@ export class OrderSyncService {
         .map((c) => [c.code.toUpperCase(), c.affiliate_id!])
     );
 
-    const ordersToUpsert = this.mapShopifyOrders(shopifyOrders, codeToIdMap, codeToAffiliateIdMap);
+    // 1. Upsert Customers primeiro para garantir que existam para o relacionamento
+    const uniqueCustomers = new Map<string, any>();
+    shopifyOrders.forEach((o) => {
+      if (o.customer) {
+        uniqueCustomers.set(String(o.customer.id), {
+          shopify_customer_id: String(o.customer.id),
+          email: o.customer.email,
+          first_name: o.customer.first_name,
+          last_name: o.customer.last_name,
+        });
+      }
+    });
+
+    const customersToUpsert = Array.from(uniqueCustomers.values());
+    const { rows: customerRows, error: customerError } = await this.repo.upsertCustomers(customersToUpsert);
+
+    if (customerError) {
+      console.error("[OrderSync] Erro ao sincronizar customers:", customerError);
+    }
+
+    const shopifyCustomerIdToDbIdMap = new Map<string, string>(
+      (customerRows || []).map((c) => [c.shopify_customer_id, c.id])
+    );
+
+    const ordersToUpsert = this.mapShopifyOrders(
+      shopifyOrders,
+      codeToIdMap,
+      codeToAffiliateIdMap,
+      shopifyCustomerIdToDbIdMap
+    );
 
     // Persiste as orders e obtém os ids gerados pelo banco
     const { rows, error: ordersError } = await this.repo.upsertOrders(ordersToUpsert);

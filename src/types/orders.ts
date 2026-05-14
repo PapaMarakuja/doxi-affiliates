@@ -4,12 +4,16 @@ export interface Orders {
   affiliate_id: string | null;
   coupon_id: string | null;
   coupon_code: string | null;
+  customer_id: string | null;
   total_amount: number;
   total_discounts: number;
   shipping_cost: number;
   currency: string;
   financial_status: "paid" | "refunded" | "processing" | "unpaid";
   created_at: string;
+  updated_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
   synced_at: string;
 }
 

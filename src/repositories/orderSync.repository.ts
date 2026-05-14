@@ -43,6 +43,24 @@ export class OrderSyncRepository {
     return { rows: (data ?? []) as { id: string; shopify_order_id: string }[], error: null };
   }
 
+  /** Insere ou atualiza customers em lote no banco (upsert por shopify_customer_id). */
+  async upsertCustomers(customers: { shopify_customer_id: string; email: string | null; first_name: string | null; last_name: string | null }[]): Promise<{ rows: { id: string; shopify_customer_id: string }[]; error: string | null }> {
+    if (customers.length === 0) return { rows: [], error: null };
+
+    const supabase = await createSupabaseServerClient();
+
+    const { data, error } = await supabase
+      .from("shopify_customers")
+      .upsert(customers, { onConflict: "shopify_customer_id" })
+      .select("id, shopify_customer_id");
+
+    if (error) {
+      return { rows: [], error: error.message };
+    }
+
+    return { rows: (data ?? []) as { id: string; shopify_customer_id: string }[], error: null };
+  }
+
   /**
    * Insere os itens de cada pedido na tabela order_items.
    * Deleta os itens existentes do order antes de reinserir para garantir

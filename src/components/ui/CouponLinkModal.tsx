@@ -115,27 +115,28 @@ export function CouponLinkModal({
         size="lg"
         id="coupon-link-modal"
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {/* Button to create a new coupon */}
-          <div style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* Filter and Create Button Area */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "16px" }}>
             <div style={{ flex: 1 }}>
               <Input
                 label="Filtrar cupom por nome/código"
                 placeholder="Digite para filtrar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ margin: 0 }}
               />
             </div>
             <Button
               variant="primary"
-              style={{ width: "auto" }}
+              style={{ width: "auto", marginBottom: "20px" }}
               onClick={() => {
                 setCouponToEdit(null);
                 setShowCreateModal(true);
               }}
               type="button"
             >
-              <FontAwesomeIcon icon={faPlus} style={{ marginRight: "6px" }} />
+              <FontAwesomeIcon icon={faPlus} style={{ marginRight: "8px" }} />
               Cadastrar Novo Cupom
             </Button>
           </div>
@@ -250,37 +251,39 @@ export function CouponLinkModal({
                           />
                         )}
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "center", display: "flex", gap: "8px", justifyContent: "center" }}>
-                        <Button
-                          variant="primary"
-                          outline
-                          style={{
-                            width: "auto",
-                            padding: "8px 16px",
-                            fontSize: "13px",
-                            minHeight: "unset",
-                          }}
-                          onClick={() => handleLink(coupon.id)}
-                          loading={linkingId === coupon.id}
-                          disabled={linkingId !== null}
-                          type="button"
-                        >
-                          Vincular
-                        </Button>
-                        <Button
-                          variant="info"
-                          outline
-                          style={{
-                            width: "auto",
-                            padding: "8px 16px",
-                            fontSize: "13px",
-                            minHeight: "unset",
-                          }}
-                          onClick={() => handleEdit(coupon)}
-                          type="button"
-                        >
-                          Editar
-                        </Button>
+                      <td style={{ ...tdStyle }}>
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                          <Button
+                            variant="primary"
+                            outline
+                            style={{
+                              width: "auto",
+                              padding: "6px 12px",
+                              fontSize: "13px",
+                              minHeight: "unset",
+                            }}
+                            onClick={() => handleLink(coupon.id)}
+                            loading={linkingId === coupon.id}
+                            disabled={linkingId !== null}
+                            type="button"
+                          >
+                            Vincular
+                          </Button>
+                          <Button
+                            variant="info"
+                            outline
+                            style={{
+                              width: "auto",
+                              padding: "6px 12px",
+                              fontSize: "13px",
+                              minHeight: "unset",
+                            }}
+                            onClick={() => handleEdit(coupon)}
+                            type="button"
+                          >
+                            Editar
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

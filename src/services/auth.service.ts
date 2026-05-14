@@ -17,6 +17,7 @@ export interface CreateUserPayload {
   pix_key?: string | null;
   contact_phone?: string | null;
   contact_email?: string | null;
+  createAffiliate?: boolean;
 }
 
 export interface CreateUserResult {
@@ -129,8 +130,9 @@ export class AuthService {
       }
 
       let affiliate: Affiliate | null = null;
+      const shouldCreateAffiliate = payload.createAffiliate ?? (role === "affiliate");
 
-      if (role === "affiliate") {
+      if (shouldCreateAffiliate) {
         const { data: affiliateData, error: affiliateError } =
           await serviceClient
             .from("affiliates")

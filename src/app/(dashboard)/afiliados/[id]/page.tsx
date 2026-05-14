@@ -20,6 +20,8 @@ import {
   faShieldHalved,
   faPen,
   faUnlink,
+  faSave,
+  faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons';
 import type { Affiliate, Coupon, Profile } from '@/src/types';
 import { returnRole } from '@/src/lib/utils';
@@ -162,7 +164,7 @@ export default function AfiliadoEditPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (redirectAfterCreate: boolean = false) => {
     const payload = getValidatedPayload();
     if (!payload) return;
 
@@ -195,6 +197,10 @@ export default function AfiliadoEditPage() {
         router.replace(`/afiliados/${createdAffiliate.id}`);
       } else {
         addToast({ message: 'Afiliado atualizado com sucesso!', type: 'success' });
+      }
+
+      if (redirectAfterCreate) {
+        router.push('/afiliados');
       }
     } catch (error) {
       console.error(error);
@@ -661,10 +667,11 @@ export default function AfiliadoEditPage() {
         <div style={{ display: 'flex', gap: '1rem' }}>
           <Button
             variant='primary'
-            onClick={handleSave}
+            onClick={() => handleSave(true)}
             disabled={saving}
             style={{ width: 'auto' }}
           >
+            <FontAwesomeIcon icon={faSave} style={{ marginRight: '8px' }} />
             {saving
               ? 'Salvando...'
               : currentAffiliateId
@@ -677,6 +684,7 @@ export default function AfiliadoEditPage() {
             style={{ width: 'auto' }}
             onClick={() => router.push('/afiliados')}
           >
+            <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: '8px' }} />
             Voltar
           </Button>
         </div>

@@ -68,9 +68,11 @@ export class PayoutRepository {
 
   async updatePayoutStatus(id: string, status: Payout["status"]): Promise<Payout | null> {
     const supabase = await createSupabaseServerClient();
-    const updates: Partial<Payout> = { status };
+    const updates: Partial<Payout> & { paid_at?: string | null } = { status };
     if (status === "paid") {
       updates.paid_at = new Date().toISOString();
+    } else if (status === "pending") {
+      updates.paid_at = null;
     }
 
     const { data, error } = await supabase
@@ -82,5 +84,15 @@ export class PayoutRepository {
 
     if (error) return null;
     return data as Payout;
+  }
+
+  async deletePayout(id: string): Promise<boolean> {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase
+      .from("payouts")
+      .delete()
+      .eq("id", id);
+
+    return !error;
   }
 }

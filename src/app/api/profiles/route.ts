@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       pix_key: body.pix_key ?? null,
       contact_phone: body.contact_phone ?? null,
       contact_email: body.contact_email ?? null,
+      createAffiliate: body.createAffiliate,
     });
 
     if (result.error || !result.data) {

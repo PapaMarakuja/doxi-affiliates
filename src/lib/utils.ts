@@ -25,7 +25,7 @@ export function formatDate(date: string | Date, includeTime: boolean = false) {
   if (!date) return "-";
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return "-";
-  
+
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'medium',
     timeStyle: includeTime ? 'short' : undefined

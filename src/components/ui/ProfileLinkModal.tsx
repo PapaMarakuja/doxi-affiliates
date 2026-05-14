@@ -79,9 +79,13 @@ export function ProfileLinkModal({
     }
   };
 
-  const handleProfileCreated = (profile: Profile) => {
-    // New profile created — add it to the unlinked list
+  const handleProfileCreated = async (profile: Profile) => {
+    // New profile created specifically to be linked to this affiliate
+    setShowCreateModal(false);
+    // Add to list briefly so handleLink can find it to return to onProfileLinked
     setUnlinkedProfiles((prev) => [profile, ...prev]);
+    // Automatically link to current affiliate
+    await handleLink(profile.id);
   };
 
   return (
@@ -248,6 +252,7 @@ export function ProfileLinkModal({
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onProfileCreated={handleProfileCreated}
+        createAffiliate={false}
       />
     </>
   );
