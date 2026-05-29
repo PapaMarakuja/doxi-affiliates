@@ -25,9 +25,16 @@ export default async function AuthenticatedLayout({
   }
 
   const { user, profile } = profileResult.data;
+  let affiliate = null;
+
+  if (profile.role === "affiliate") {
+    const { AffiliateRepository } = await import("@/src/repositories/affiliate.repository");
+    const repo = new AffiliateRepository();
+    affiliate = await repo.getAffiliateByProfileId(profile.id);
+  }
 
   return (
-    <DashboardLayout user={user} profile={profile}>
+    <DashboardLayout user={user} profile={profile} affiliate={affiliate}>
       {children}
     </DashboardLayout>
   );

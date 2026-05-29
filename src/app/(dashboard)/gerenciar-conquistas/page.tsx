@@ -158,13 +158,13 @@ export default function GerenciarConquistasPage() {
       header: "Ações",
       render: (item) => (
         <div style={{ display: "flex", gap: "8px" }}>
-          <Button variant="info" style={{ padding: "6px", width: "auto" }} onClick={() => {
+          <Button variant="info" circle onClick={() => {
             setEditingDef(item);
             setIsModalOpen(true);
           }}>
             <FontAwesomeIcon icon={faPen} />
           </Button>
-          <Button variant="danger" style={{ padding: "6px", width: "auto" }} onClick={() => handleDeleteDef(item.id)}>
+          <Button variant="danger" circle onClick={() => handleDeleteDef(item.id)}>
             <FontAwesomeIcon icon={faTrash} />
           </Button>
         </div>

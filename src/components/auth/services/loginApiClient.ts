@@ -1,11 +1,15 @@
-import type { LoginFormValues } from "../validators/loginValidator";
-
 export interface LoginApiResponse {
   success: boolean;
   error?: string;
 }
 
-export async function submitLogin(credentials: LoginFormValues): Promise<LoginApiResponse> {
+/** Payload sent to the login API endpoint. Always uses a resolved e-mail. */
+export interface LoginApiPayload {
+  email: string;
+  password: string;
+}
+
+export async function submitLogin(credentials: LoginApiPayload): Promise<LoginApiResponse> {
   const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

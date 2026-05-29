@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardHeader from './DashboardHeader';
 import { User } from '@supabase/supabase-js';
-import { Profile } from '@/src/types';
+import { Profile, Affiliate } from '@/src/types';
 import { ToastProvider } from '@/src/contexts/ToastContext';
 import { ToastContainer } from '@/src/components/ui/Toast';
 import { ConfirmDialogProvider } from '@/src/contexts/ConfirmDialogContext';
@@ -34,10 +34,11 @@ interface Props {
   children: React.ReactNode;
   user: User;
   profile: Profile;
+  affiliate?: Affiliate | null;
 }
 
-export default function DashboardLayout({ children, user, profile }: Props) {
-  const hasPixOnInitialProfile = Boolean(profile.pix_key?.trim());
+export default function DashboardLayout({ children, user, profile, affiliate }: Props) {
+  const hasPixOnInitialProfile = profile.role === 'admin' ? true : Boolean(affiliate?.pix_key?.trim());
   const [hasPostLoginFlag] = useState(() => {
     if (typeof window === 'undefined') return false;
     const value = sessionStorage.getItem(POST_LOGIN_FLAG) === '1';
@@ -49,11 +50,16 @@ export default function DashboardLayout({ children, user, profile }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [displayProfile, setDisplayProfile] = useState(profile);
+  const [displayAffiliate, setDisplayAffiliate] = useState(affiliate);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalStartInEditMode, setProfileModalStartInEditMode] = useState(false);
   const [pixPendingModalOpen, setPixPendingModalOpen] = useState(
-    hasPostLoginFlag && !hasPixOnInitialProfile
+    hasPostLoginFlag && (profile.role !== 'admin' && !hasPixOnInitialProfile)
   );
+
+  useEffect(() => {
+    setDisplayAffiliate(affiliate);
+  }, [affiliate]);
   const pathname = usePathname();
   const pageTitle = pageTitles[pathname] || 'Dashboard';
 
@@ -129,7 +135,9 @@ export default function DashboardLayout({ children, user, profile }: Props) {
               isOpen={profileModalOpen}
               onClose={handleCloseProfileModal}
               profile={displayProfile}
+              affiliate={displayAffiliate}
               onProfileUpdated={setDisplayProfile}
+              onAffiliateUpdated={setDisplayAffiliate}
               startInEditMode={profileModalStartInEditMode}
             />
 

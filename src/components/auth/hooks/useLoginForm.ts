@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { LoginFormValues, LoginFormErrors } from "../validators/loginValidator";
 import { validateLoginForm, hasErrors } from "../validators/loginValidator";
 import { submitLogin } from "../services/loginApiClient";
+import { resolveAuthEmail } from "@/src/lib/auth/usernameResolver";
 
 export interface UseLoginFormReturn {
   values: LoginFormValues;
@@ -21,7 +22,7 @@ export function useLoginForm(): UseLoginFormReturn {
   const router = useRouter();
   const postLoginFlag = "doxi-post-login";
 
-  const [values, setValues] = useState<LoginFormValues>({ email: "", password: "" });
+  const [values, setValues] = useState<LoginFormValues>({ username: "", password: "" });
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,7 +52,11 @@ export function useLoginForm(): UseLoginFormReturn {
 
     setLoading(true);
     try {
-      const result = await submitLogin(values);
+      // Convert username to the system e-mail address transparently
+      const result = await submitLogin({
+        email: resolveAuthEmail(values.username),
+        password: values.password,
+      });
 
       if (!result.success) {
         setServerError(result.error ?? "Erro ao realizar login.");

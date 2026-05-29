@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faTicket,
@@ -12,6 +12,9 @@ import {
   faCircleCheck,
   faChartSimple,
   faCloudArrowDown,
+  faLink,
+  faCopy,
+  faRocket,
 } from '@fortawesome/free-solid-svg-icons';
 import {
   AreaChart,
@@ -25,9 +28,11 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import type { DashboardData } from '@/src/types';
+import type { DashboardData, Affiliate, Coupon } from '@/src/types';
 import { useConfirmDialog } from '@/src/contexts/ConfirmDialogContext';
 import { Skeleton } from '@/src/components/ui/Skeleton';
+import { useToast } from '@/src/contexts/ToastContext';
+import { Card } from '@/src/components/ui/Card';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -113,6 +118,7 @@ const EMPTY_DAILY = [
 ];
 
 export default function DashboardContent() {
+  const { addToast } = useToast();
   const [chartMode, setChartMode] = useState<ChartMode>('monthly');
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [syncing, setSyncing] = useState(false);
@@ -120,8 +126,21 @@ export default function DashboardContent() {
   const [lastSyncSuccess, setLastSyncSuccess] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [dashData, setDashData] = useState<DashboardData | null>(null);
+  const [benefitsData, setBenefitsData] = useState<{ affiliate: Affiliate; coupons: Coupon[] } | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const confirm = useConfirmDialog();
+
+  const fetchBenefits = useCallback(async () => {
+    try {
+      const res = await fetch('/api/affiliates/me/benefits');
+      if (res.ok) {
+        const json = await res.json();
+        setBenefitsData(json.data);
+      }
+    } catch (error) {
+      console.error('Error fetching benefits:', error);
+    }
+  }, []);
 
   // Carrega dados do dashboard na montagem (sem sincronizar)
   useEffect(() => {
@@ -130,7 +149,12 @@ export default function DashboardContent() {
         const res = await fetch('/api/sync');
         if (res.ok) {
           const json = await res.json();
-          if (json.data) setDashData(json.data);
+          if (json.data) {
+            setDashData(json.data);
+            if (!json.data.isAdmin) {
+              fetchBenefits();
+            }
+          }
         }
       } catch {
         // Silencioso — dados não carregados
@@ -139,7 +163,7 @@ export default function DashboardContent() {
       }
     }
     loadInitialData();
-  }, []);
+  }, [fetchBenefits]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -285,6 +309,16 @@ export default function DashboardContent() {
   const chartMonthlyData = dashData?.chartMonthly ?? EMPTY_CHART;
   const chartDailyData = dashData?.chartDaily ?? EMPTY_DAILY;
 
+  const featuredCoupon = benefitsData?.coupons.find(c => c.active && c.discount_percentage !== null) ||
+    (benefitsData?.coupons && benefitsData.coupons.length > 0 ? benefitsData.coupons[0] : null);
+
+  const handleCopyLink = () => {
+    if (!featuredCoupon) return;
+    const link = `https://doxiwear.com/?coupon=${featuredCoupon.code}`;
+    navigator.clipboard.writeText(link);
+    addToast({ message: "Link de indicação copiado com sucesso!", type: "success" });
+  };
+
   return (
     <div className='dash-page'>
       <div className='dash-stats-grid'>
@@ -309,6 +343,88 @@ export default function DashboardContent() {
           </div>
         ))}
       </div>
+
+      {/* CARD DE DIVULGAÇÃO DO LINK DE AFILIADO */}
+      {(initialLoading || (!isAdmin && featuredCoupon)) && (
+        <Card className="transition-all duration-300">
+          {initialLoading ? (
+            <div className="dash-link-card-body">
+              <div className="dash-link-card-info" style={{ width: '100%' }}>
+                <div className="dash-link-card-header">
+                  <Skeleton width="52px" height="52px" borderRadius="50%" />
+                  <div style={{ flex: 1 }}>
+                    <Skeleton width="60%" height="24px" className="mb-2" />
+                    <Skeleton width="40%" height="16px" />
+                  </div>
+                </div>
+                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Skeleton width="100%" height="16px" />
+                  <Skeleton width="90%" height="16px" />
+                  <Skeleton width="50%" height="16px" />
+                </div>
+              </div>
+              <div className="dash-link-card-action-zone">
+                <Skeleton width="120px" height="16px" className="mb-2" />
+                <Skeleton width="100%" height="48px" borderRadius="12px" />
+                <Skeleton width="150px" height="16px" style={{ marginTop: '8px' }} />
+              </div>
+            </div>
+          ) : (
+            featuredCoupon && (
+              <div className="dash-link-card-body">
+                <div className="dash-link-card-info">
+                  <div className="dash-link-card-header">
+                    <div className="dash-link-card-icon-circle">
+                      <FontAwesomeIcon icon={faRocket} />
+                    </div>
+                    <div>
+                      <h3 className="dash-link-card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        Facilite suas indicações com seu Link Exclusivo!
+                      </h3>
+                      <p className="dash-link-card-subtitle">
+                        Compartilhe seu link personalizado e aumente suas chances de conversão.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="dash-link-card-description" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+                    <p style={{ margin: 0 }}>
+                      Para te ajudar a divulgar e vender mais, criamos um link de indicação personalizado para você!
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      Quando um cliente clica no seu link, o cupom <strong style={{ color: 'var(--pink-dark)' }}>{featuredCoupon.code}</strong> é aplicado de forma automática no carrinho de compras.
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      E o melhor: com o nosso <strong style={{ color: 'var(--pink-dark)' }}>Cookie de 7 dias</strong>, mesmo se ele fechar a loja e comprar em até uma semana, a comissão continua sendo sua!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="dash-link-card-action-zone">
+                  <span className="dash-link-card-action-label">Seu Link de Afiliado:</span>
+                  <div
+                    className="dash-link-copy-container"
+                    onClick={handleCopyLink}
+                    title="Clique para copiar o link"
+                  >
+                    <code className="dash-link-code-text">
+                      doxiwear.com/?coupon={featuredCoupon.code}
+                    </code>
+                    <button className="dash-link-copy-btn">
+                      <FontAwesomeIcon icon={faCopy} />
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+                  <div className="dash-link-card-badge">
+                    <FontAwesomeIcon icon={faCircleCheck} style={{ marginRight: '6px', fontSize: '12px' }} />
+                    Cookie ativo por 7 dias
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </Card>
+      )}
 
       <div className='dash-main-card'>
         <div className='dash-chart-header'>

@@ -1,20 +1,28 @@
 import { AuthService, type LoginCredentials } from "@/src/services/auth.service";
+import { resolveAuthEmail } from "@/src/lib/auth/usernameResolver";
 import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as LoginCredentials;
+    const body = await request.json() as LoginCredentials & { username?: string };
 
-    if (!body.email || !body.password) {
+    const rawUsername = body.username ?? body.email ?? "";
+    if (!rawUsername || !body.password) {
       return Response.json(
-        { error: "E-mail e senha são obrigatórios." },
+        { error: "Usuário e senha são obrigatórios." },
         { status: 400 }
       );
     }
 
+    // Resolve username → system e-mail. If the caller already sent a full
+    // e-mail address (e.g. internal tooling), use it as-is.
+    const email = rawUsername.includes("@")
+      ? rawUsername
+      : resolveAuthEmail(rawUsername);
+
     const authService = new AuthService();
     const result = await authService.login({
-      email: body.email,
+      email,
       password: body.password,
     });
 

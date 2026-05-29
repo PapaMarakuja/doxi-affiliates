@@ -6,10 +6,10 @@ export class PayoutService {
   async calculateAffiliateOwed(affiliateId: string) {
     const supabase = await createSupabaseServerClient();
     
-    // Get affiliate info including profile for pix_key
+    // Get affiliate info including pix_key
     const { data: affiliate } = await supabase
       .from("affiliates")
-      .select("*, profiles(pix_key)")
+      .select("*")
       .eq("id", affiliateId)
       .single();
 
@@ -70,7 +70,7 @@ export class PayoutService {
     return {
       affiliateId,
       name: affiliate.name,
-      pixKey: affiliate.profiles?.pix_key || "Não cadastrada",
+      pixKey: affiliate.pix_key || "Não cadastrada",
       baseCommission: baseCommissionTotal,
       achievementsCommission: achievementsCommissionTotal,
       totalEarned,

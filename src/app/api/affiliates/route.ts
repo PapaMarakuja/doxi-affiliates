@@ -44,6 +44,9 @@ export async function POST(request: NextRequest) {
       name: body.name,
       profile_id: body.profile_id || null,
       commission_rate: body.commission_rate ?? null,
+      pix_key: body.pix_key || null,
+      contact_phone: body.contact_phone || null,
+      contact_email: body.contact_email || null,
     });
 
     if (!created) {

@@ -16,17 +16,17 @@ export function LoginForm() {
       {serverError && <Alert type='error' message={serverError} />}
 
       <Input
-        id='email'
-        name='email'
+        id='username'
+        name='username'
         type='text'
         label='Usuário'
         placeholder='Digite seu usuário'
         autoComplete='username'
-        value={values.email}
+        value={values.username}
         onChange={handleChange}
         disabled={loading}
         icon={<FontAwesomeIcon icon={faUser} />}
-        error={errors.email}
+        error={errors.username}
       />
 
       <Input

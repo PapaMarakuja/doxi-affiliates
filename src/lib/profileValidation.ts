@@ -11,7 +11,11 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[\d\s\-()+]{7,20}$/;
 
 export function validateProfileUpdate(
-  values: Partial<Pick<Profile, "name" | "contact_email" | "contact_phone" | "pix_key">>
+  values: Partial<Pick<Profile, "name">> & {
+    contact_email?: string | null;
+    contact_phone?: string | null;
+    pix_key?: string | null;
+  }
 ): ProfileValidationErrors {
   const errors: ProfileValidationErrors = {};
 

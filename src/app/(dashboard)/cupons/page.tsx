@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faTicket,
@@ -15,6 +15,7 @@ import {
   faArrowDownWideShort,
   faHandHoldingDollar,
   faTrash,
+  faPenToSquare,
 } from '@fortawesome/free-solid-svg-icons';
 import { CouponCreateModal } from '@/src/components/ui/CouponCreateModal';
 import { Select } from '@/src/components/ui/Select';
@@ -59,18 +60,16 @@ type SortKey =
   | 'most_revenue'
   | 'most_discount'
   | 'most_commission'
-  | 'monthly_uses'
   | 'newest'
   | 'alphabetical';
 
 type SortDirection = 'asc' | 'desc';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'most_used', label: 'Mais usados' },
-  { key: 'most_revenue', label: 'Maior receita' },
-  { key: 'most_discount', label: 'Mais descontos' },
-  { key: 'most_commission', label: 'Mais comissão' },
-  { key: 'monthly_uses', label: 'Usos do mês' },
+  { key: 'most_used', label: 'Mais usados no mês' },
+  { key: 'most_revenue', label: 'Maior receita no mês' },
+  { key: 'most_discount', label: 'Mais descontos no mês' },
+  { key: 'most_commission', label: 'Mais comissão no mês' },
   { key: 'newest', label: 'Mais recente' },
   { key: 'alphabetical', label: 'A → Z' },
 ];
@@ -102,25 +101,21 @@ function sortCoupons(
   switch (sortKey) {
     case 'most_used':
       return sorted.sort((a, b) =>
-        isAsc ? a.totalUses - b.totalUses : b.totalUses - a.totalUses
+        isAsc ? a.monthlyUses - b.monthlyUses : b.monthlyUses - a.monthlyUses
       );
     case 'most_revenue':
       return sorted.sort((a, b) =>
-        isAsc ? a.totalRevenue - b.totalRevenue : b.totalRevenue - a.totalRevenue
+        isAsc ? a.monthlyRevenue - b.monthlyRevenue : b.monthlyRevenue - a.monthlyRevenue
       );
     case 'most_discount':
       return sorted.sort((a, b) =>
-        isAsc ? a.totalDiscount - b.totalDiscount : b.totalDiscount - a.totalDiscount
+        isAsc ? a.monthlyDiscount - b.monthlyDiscount : b.monthlyDiscount - a.monthlyDiscount
       );
     case 'most_commission':
       return sorted.sort((a, b) =>
         isAsc
-          ? a.totalCommission - b.totalCommission
-          : b.totalCommission - a.totalCommission
-      );
-    case 'monthly_uses':
-      return sorted.sort((a, b) =>
-        isAsc ? a.monthlyUses - b.monthlyUses : b.monthlyUses - a.monthlyUses
+          ? a.monthlyCommission - b.monthlyCommission
+          : b.monthlyCommission - a.monthlyCommission
       );
     case 'newest':
       return sorted.sort((a, b) => {
@@ -186,6 +181,7 @@ export default function CuponsPage() {
   const confirm = useConfirmDialog();
   const [data, setData] = useState<CouponsPageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [deletingCouponId, setDeletingCouponId] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -209,8 +205,19 @@ export default function CuponsPage() {
       // silencioso
     } finally {
       setLoading(false);
+      setFilterLoading(false);
       setRefreshing(false);
     }
+  }, [filterMonth, filterYear]);
+
+  // Ativa loading visível ao trocar filtro (ignora mount inicial)
+  const isMounted = useRef(false);
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    setFilterLoading(true);
   }, [filterMonth, filterYear]);
 
   useEffect(() => {
@@ -315,7 +322,6 @@ export default function CuponsPage() {
   );
 
   const displayMonthName = MONTHS[filterMonth - 1];
-  const displayMonthStr = `de ${displayMonthName}`;
 
   return (
     <div className='cupons-page'>
@@ -384,256 +390,290 @@ export default function CuponsPage() {
         </div>
       </div>
 
-      {/* ── Totais ────────────────────────── */}
-      {totals && (
-        <div className='cupons-totals-grid'>
-          <div className='cupons-total-card'>
-            <div className='cupons-total-icon stat-card-icon--amber'>
-              <FontAwesomeIcon icon={faBagShopping} />
-            </div>
-            <div className='cupons-total-content'>
-              <span className='cupons-total-label'>Usos Totais</span>
-              <span className='cupons-total-value'>{formatNumber(totals.totalUses)}</span>
-            </div>
+      {/* ── Área de dados com overlay de filtro ─ */}
+      <div className='cupons-data-area'>
+        {filterLoading && (
+          <div className='cupons-filter-overlay'>
+            <div className='cupons-filter-spinner' />
+            <span>Carregando {displayMonthName} {filterYear}…</span>
           </div>
-          <div className='cupons-total-card'>
-            <div className='cupons-total-icon stat-card-icon--green'>
-              <FontAwesomeIcon icon={faCoins} />
-            </div>
-            <div className='cupons-total-content'>
-              <span className='cupons-total-label'>Receita Total</span>
-              <span className='cupons-total-value'>{formatBRL(totals.totalRevenue)}</span>
-            </div>
-          </div>
-          <div className='cupons-total-card'>
-            <div className='cupons-total-icon stat-card-icon--pink'>
-              <FontAwesomeIcon icon={faPercent} />
-            </div>
-            <div className='cupons-total-content'>
-              <span className='cupons-total-label'>Descontos Dados</span>
-              <span className='cupons-total-value'>
-                {formatBRL(totals.totalDiscount)}
-              </span>
-            </div>
-          </div>
-          <div className='cupons-total-card'>
-            <div className='cupons-total-icon stat-card-icon--blue'>
-              <FontAwesomeIcon icon={faHandHoldingDollar} />
-            </div>
-            <div className='cupons-total-content'>
-              <span className='cupons-total-label'>Comissões Totais</span>
-              <span className='cupons-total-value'>
-                {formatBRL(totals.totalCommission)}
-              </span>
-            </div>
-          </div>
-          <div className='cupons-total-card'>
-            <div className='cupons-total-icon stat-card-icon--amber'>
+        )}
+
+        {/* ── Totais ────────────────────────── */}
+        {totals && (
+          <div className={`cupons-totals-section${filterLoading ? ' cupons-data-area--loading' : ''}`}>
+            {/* Mês em destaque */}
+            <p className='cupons-totals-section-label'>
               <FontAwesomeIcon icon={faCalendarDay} />
-            </div>
-            <div className='cupons-total-content'>
-              <span className='cupons-total-label'>Usos {displayMonthStr}</span>
-              <span className='cupons-total-value'>
-                {formatNumber(totals.monthlyUses)}
-              </span>
-            </div>
-          </div>
-          <div className='cupons-total-card'>
-            <div className='cupons-total-icon stat-card-icon--green'>
-              <FontAwesomeIcon icon={faChartBar} />
-            </div>
-            <div className='cupons-total-content'>
-              <span className='cupons-total-label'>Receita {displayMonthStr}</span>
-              <span className='cupons-total-value'>
-                {formatBRL(totals.monthlyRevenue)}
-              </span>
-            </div>
-          </div>
-          <div className='cupons-total-card'>
-            <div className='cupons-total-icon stat-card-icon--pink'>
-              <FontAwesomeIcon icon={faCalendarCheck} />
-            </div>
-            <div className='cupons-total-content'>
-              <span className='cupons-total-label'>Descontos {displayMonthStr}</span>
-              <span className='cupons-total-value'>
-                {formatBRL(totals.monthlyDiscount)}
-              </span>
-            </div>
-          </div>
-          <div className='cupons-total-card'>
-            <div className='cupons-total-icon stat-card-icon--blue'>
-              <FontAwesomeIcon icon={faHandHoldingDollar} />
-            </div>
-            <div className='cupons-total-content'>
-              <span className='cupons-total-label'>Comissões {displayMonthStr}</span>
-              <span className='cupons-total-value'>
-                {formatBRL(totals.monthlyCommission)}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Ordenação + Lista de Cupons ──── */}
-      {!loading && sortedCoupons.length > 0 && (
-        <div className='cupons-sort-container'>
-          <div className='cupons-sort-bar'>
-            <div className='cupons-sort-label'>
-              <FontAwesomeIcon icon={faArrowDownWideShort} />
-              <span>Ordenar por</span>
-            </div>
-            <div className='cupons-sort-options'>
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  className={`cupons-sort-chip ${sortKey === opt.key ? 'cupons-sort-chip--active' : ''}`}
-                  onClick={() => handleSortChange(opt.key)}
-                >
-                  <span>{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className='cupons-sort-dir'>
-            <Select
-              options={sortDirOptions}
-              value={sortDir}
-              onChange={(val) => handleDirChange(val as SortDirection)}
-              clearable={false}
-              className='w-fit'
-              style={{ minWidth: '160px' }}
-            />
-          </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className='cupons-loading-grid'>
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className='coupon-card cupons-card-skeleton'>
-              <div className='coupon-card-header'>
-                <div className='coupon-card-icon'>
-                  <FontAwesomeIcon icon={faTicket} />
+              {displayMonthName} {filterYear}
+            </p>
+            <div className='cupons-totals-grid'>
+              <div className='cupons-total-card cupons-total-card--monthly'>
+                <div className='cupons-total-icon stat-card-icon--amber'>
+                  <FontAwesomeIcon icon={faBagShopping} />
                 </div>
-                <Skeleton width="80px" height="20px" borderRadius="20px" />
+                <div className='cupons-total-content'>
+                  <span className='cupons-total-label'>Usos no mês</span>
+                  <span className='cupons-total-value'>{formatNumber(totals.monthlyUses)}</span>
+                </div>
               </div>
-              <Skeleton width="120px" height="32px" className="mb-2" />
-              <Skeleton width="60px" height="16px" />
+              <div className='cupons-total-card cupons-total-card--monthly'>
+                <div className='cupons-total-icon stat-card-icon--green'>
+                  <FontAwesomeIcon icon={faChartBar} />
+                </div>
+                <div className='cupons-total-content'>
+                  <span className='cupons-total-label'>Receita no mês</span>
+                  <span className='cupons-total-value'>{formatBRL(totals.monthlyRevenue)}</span>
+                </div>
+              </div>
+              <div className='cupons-total-card cupons-total-card--monthly'>
+                <div className='cupons-total-icon stat-card-icon--pink'>
+                  <FontAwesomeIcon icon={faCalendarCheck} />
+                </div>
+                <div className='cupons-total-content'>
+                  <span className='cupons-total-label'>Descontos no mês</span>
+                  <span className='cupons-total-value'>{formatBRL(totals.monthlyDiscount)}</span>
+                </div>
+              </div>
+              <div className='cupons-total-card cupons-total-card--monthly'>
+                <div className='cupons-total-icon stat-card-icon--blue'>
+                  <FontAwesomeIcon icon={faHandHoldingDollar} />
+                </div>
+                <div className='cupons-total-content'>
+                  <span className='cupons-total-label'>Comissões no mês</span>
+                  <span className='cupons-total-value'>{formatBRL(totals.monthlyCommission)}</span>
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-      ) : sortedCoupons.length === 0 ? (
-        <div className='cupons-empty'>
-          <FontAwesomeIcon icon={faTicket} className='cupons-empty-icon' />
-          <p>Nenhum cupom cadastrado ainda.</p>
-          <button
-            className='ui-button w-fit ui-button--success'
-            onClick={() => setCreateModalOpen(true)}
-            style={{ gap: '8px' }}
-          >
-            <FontAwesomeIcon icon={faPlus} />
-            Cadastrar primeiro cupom
-          </button>
-        </div>
-      ) : (
-        <div className='coupon-grid'>
-          {sortedCoupons.map((cs) => {
-            const hasAffiliate = !!cs.affiliate;
-            const hasCommission = hasAffiliate && cs.totalCommission > 0;
 
-            return (
-              <div
-                key={cs.coupon.id}
-                className={`coupon-card ${!cs.coupon.active ? 'coupon-card--inactive' : ''}`}
-              >
+            {/* Totais gerais (secundários) */}
+            <p className='cupons-totals-section-label cupons-totals-section-label--secondary'>
+              <FontAwesomeIcon icon={faCoins} />
+              Total geral
+            </p>
+            <div className='cupons-totals-grid cupons-totals-grid--secondary'>
+              <div className='cupons-total-card cupons-total-card--secondary'>
+                <div className='cupons-total-icon stat-card-icon--amber'>
+                  <FontAwesomeIcon icon={faBagShopping} />
+                </div>
+                <div className='cupons-total-content'>
+                  <span className='cupons-total-label'>Usos totais</span>
+                  <span className='cupons-total-value cupons-total-value--secondary'>
+                    {formatNumber(totals.totalUses)}
+                  </span>
+                </div>
+              </div>
+              <div className='cupons-total-card cupons-total-card--secondary'>
+                <div className='cupons-total-icon stat-card-icon--green'>
+                  <FontAwesomeIcon icon={faCoins} />
+                </div>
+                <div className='cupons-total-content'>
+                  <span className='cupons-total-label'>Receita total</span>
+                  <span className='cupons-total-value cupons-total-value--secondary'>
+                    {formatBRL(totals.totalRevenue)}
+                  </span>
+                </div>
+              </div>
+              <div className='cupons-total-card cupons-total-card--secondary'>
+                <div className='cupons-total-icon stat-card-icon--pink'>
+                  <FontAwesomeIcon icon={faPercent} />
+                </div>
+                <div className='cupons-total-content'>
+                  <span className='cupons-total-label'>Descontos totais</span>
+                  <span className='cupons-total-value cupons-total-value--secondary'>
+                    {formatBRL(totals.totalDiscount)}
+                  </span>
+                </div>
+              </div>
+              <div className='cupons-total-card cupons-total-card--secondary'>
+                <div className='cupons-total-icon stat-card-icon--blue'>
+                  <FontAwesomeIcon icon={faHandHoldingDollar} />
+                </div>
+                <div className='cupons-total-content'>
+                  <span className='cupons-total-label'>Comissões totais</span>
+                  <span className='cupons-total-value cupons-total-value--secondary'>
+                    {formatBRL(totals.totalCommission)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Ordenação + Lista de Cupons ──── */}
+        {!loading && sortedCoupons.length > 0 && (
+          <div className={`cupons-sort-container${filterLoading ? ' cupons-data-area--loading' : ''}`}>
+            <div className='cupons-sort-bar'>
+              <div className='cupons-sort-label'>
+                <FontAwesomeIcon icon={faArrowDownWideShort} />
+                <span>Ordenar por</span>
+              </div>
+              <div className='cupons-sort-options'>
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    className={`cupons-sort-chip ${sortKey === opt.key ? 'cupons-sort-chip--active' : ''}`}
+                    onClick={() => handleSortChange(opt.key)}
+                  >
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className='cupons-sort-dir'>
+              <Select
+                options={sortDirOptions}
+                value={sortDir}
+                onChange={(val) => handleDirChange(val as SortDirection)}
+                clearable={false}
+                className='w-fit'
+                style={{ minWidth: '160px' }}
+              />
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className='cupons-loading-grid'>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className='coupon-card cupons-card-skeleton'>
                 <div className='coupon-card-header'>
                   <div className='coupon-card-icon'>
                     <FontAwesomeIcon icon={faTicket} />
                   </div>
-                  <span className='coupon-card-code'>{cs.coupon.code}</span>
-                  {!cs.coupon.active && (
-                    <span className='cupons-badge-inactive'>Inativo</span>
-                  )}
+                  <Skeleton width="80px" height="20px" borderRadius="20px" />
                 </div>
+                <Skeleton width="120px" height="32px" className="mb-2" />
+                <Skeleton width="60px" height="16px" />
+              </div>
+            ))}
+          </div>
+        ) : sortedCoupons.length === 0 ? (
+          <div className='cupons-empty'>
+            <FontAwesomeIcon icon={faTicket} className='cupons-empty-icon' />
+            <p>Nenhum cupom cadastrado ainda.</p>
+            <button
+              className='ui-button w-fit ui-button--success'
+              onClick={() => setCreateModalOpen(true)}
+              style={{ gap: '8px' }}
+            >
+              <FontAwesomeIcon icon={faPlus} />
+              Cadastrar primeiro cupom
+            </button>
+          </div>
+        ) : (
+          <div className={`coupon-grid${filterLoading ? ' cupons-data-area--loading' : ''}`}>
+            {sortedCoupons.map((cs) => {
+              const hasAffiliate = !!cs.affiliate;
+              const hasMonthlyCommission = hasAffiliate && cs.monthlyCommission > 0;
+              const hasTotalCommission = hasAffiliate && cs.totalCommission > 0;
 
-                {/* Valor destaque — receita quando não tem, receita + comissão secundária quando tem */}
-                {hasCommission ? (
-                  <div className='cupons-card-hero'>
-                    <span className='coupon-card-value' style={{ margin: 0 }}>
+              return (
+                <div
+                  key={cs.coupon.id}
+                  className={`coupon-card ${!cs.coupon.active ? 'coupon-card--inactive' : ''}`}
+                >
+                  <div className='coupon-card-header'>
+                    <div className='coupon-card-icon'>
+                      <FontAwesomeIcon icon={faTicket} />
+                    </div>
+                    <span className='coupon-card-code'>{cs.coupon.code}</span>
+                    {!cs.coupon.active && (
+                      <span className='cupons-badge-inactive'>Inativo</span>
+                    )}
+                  </div>
+
+                  {/* Hero — valores do mês em destaque */}
+                  <p className='cupons-card-month-label'>{displayMonthName}</p>
+                  {hasMonthlyCommission ? (
+                    <div className='cupons-card-hero'>
+                      <span className='coupon-card-value' style={{ margin: 0 }}>
+                        {formatBRL(cs.monthlyRevenue)}
+                      </span>
+                      <span className='cupons-card-hero-separator'>|</span>
+                      <span
+                        className='cupons-card-hero-revenue'
+                        style={{ alignSelf: 'center', position: 'relative', top: '-2px' }}
+                      >
+                        {formatBRL(cs.monthlyCommission)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className='coupon-card-value'>{formatBRL(cs.monthlyRevenue)}</p>
+                  )}
+
+                  <p className='coupon-card-uses'>
+                    {formatNumber(cs.monthlyUses)} uso{cs.monthlyUses !== 1 ? 's' : ''} no mês
+                    {cs.monthlyDiscount > 0 && (
+                      <span className='cupons-card-discount-inline'>
+                        {' '}
+                        · {formatBRL(cs.monthlyDiscount)} desc.
+                      </span>
+                    )}
+                  </p>
+
+                  {/* Total (secundário) */}
+                  <div className='cupons-card-total-row'>
+                    <span className='cupons-card-total-label'>Total:</span>
+                    <span className='cupons-card-total-value'>
                       {formatBRL(cs.totalRevenue)}
-                    </span>
-                    <span className='cupons-card-hero-separator'>|</span>
-                    <span
-                      className='cupons-card-hero-revenue'
-                      style={{ alignSelf: 'center', position: 'relative', top: '-2px' }}
-                    >
-                      {formatBRL(cs.totalCommission)}
+                      {hasTotalCommission && (
+                        <>
+                          <span className='cupons-card-monthly-sep'>|</span>
+                          <span className='cupons-card-monthly-commission'>
+                            {formatBRL(cs.totalCommission)}
+                          </span>
+                        </>
+                      )}{' '}
+                      · {cs.totalUses} uso{cs.totalUses !== 1 ? 's' : ''}
                     </span>
                   </div>
-                ) : (
-                  <p className='coupon-card-value'>{formatBRL(cs.totalRevenue)}</p>
-                )}
 
-                <p className='coupon-card-uses'>
-                  {formatNumber(cs.totalUses)} uso{cs.totalUses !== 1 ? 's' : ''}
-                  {cs.totalDiscount > 0 && (
-                    <span className='cupons-card-discount-inline'>
-                      {' '}
-                      · {formatBRL(cs.totalDiscount)} desc.
-                    </span>
-                  )}
-                </p>
+                  {/* Badges — desconto e comissão lado a lado */}
+                  <div className='cupons-card-badges'>
+                    {cs.coupon.discount_percentage !== null && (
+                      <div className='cupons-card-discount'>
+                        {cs.coupon.discount_percentage}% desconto
+                      </div>
+                    )}
+                    {hasAffiliate && cs.affiliate!.commission_rate != null && (
+                      <div className='cupons-card-commission-badge'>
+                        {cs.affiliate!.commission_rate}% comissão
+                      </div>
+                    )}
+                  </div>
 
-                {/* Mensal */}
-                <div className='cupons-card-monthly'>
-                  <span className='cupons-card-monthly-label'>{displayMonthName}:</span>
-                  <span className='cupons-card-monthly-value'>
-                    {formatBRL(cs.monthlyRevenue)}
-                    {hasAffiliate && (
-                      <>
-                        <span className='cupons-card-monthly-sep'>|</span>
-                        <span className='cupons-card-monthly-commission'>
-                          {formatBRL(cs.monthlyCommission)}
-                        </span>
-                      </>
-                    )}{' '}
-                    · {cs.monthlyUses} uso{cs.monthlyUses !== 1 ? 's' : ''}
-                  </span>
+                  {/* Botões de ação */}
+                  <div className='cupons-card-actions'>
+                    <button
+                      type='button'
+                      className='ui-button ui-button--circle ui-button--info ui-button--sm cupons-card-action-btn'
+                      aria-label={`Editar cupom ${cs.coupon.code}`}
+                      title='Editar cupom'
+                    >
+                      <FontAwesomeIcon icon={faPenToSquare} />
+                    </button>
+                    <button
+                      type='button'
+                      className='ui-button ui-button--circle ui-button--danger ui-button--sm cupons-card-action-btn'
+                      onClick={() => handleDeleteCoupon(cs.coupon)}
+                      disabled={deletingCouponId === cs.coupon.id}
+                      aria-label={`Excluir cupom ${cs.coupon.code}`}
+                      title='Excluir cupom'
+                    >
+                      {deletingCouponId === cs.coupon.id ? (
+                        <span className='cupons-card-delete-spinner' />
+                      ) : (
+                        <FontAwesomeIcon icon={faTrash} />
+                      )}
+                    </button>
+                  </div>
                 </div>
-
-                {/* Badges — desconto e comissão lado a lado */}
-                <div className='cupons-card-badges'>
-                  {cs.coupon.discount_percentage !== null && (
-                    <div className='cupons-card-discount'>
-                      {cs.coupon.discount_percentage}% desconto
-                    </div>
-                  )}
-                  {hasAffiliate && cs.affiliate!.commission_rate != null && (
-                    <div className='cupons-card-commission-badge'>
-                      {cs.affiliate!.commission_rate}% comissão
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type='button'
-                  className='cupons-card-delete-badge'
-                  onClick={() => handleDeleteCoupon(cs.coupon)}
-                  disabled={deletingCouponId === cs.coupon.id}
-                  aria-label={`Excluir cupom ${cs.coupon.code}`}
-                  title='Excluir cupom'
-                >
-                  {deletingCouponId === cs.coupon.id ? (
-                    <span className='cupons-card-delete-spinner' />
-                  ) : (
-                    <FontAwesomeIcon icon={faTrash} />
-                  )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── Modal de Cadastro ─────────────── */}
       <CouponCreateModal

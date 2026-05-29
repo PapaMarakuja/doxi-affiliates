@@ -50,6 +50,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       name: body.name,
       profile_id: body.profile_id !== undefined ? body.profile_id : undefined,
       commission_rate: body.commission_rate !== undefined ? body.commission_rate : undefined,
+      pix_key: body.pix_key !== undefined ? body.pix_key : undefined,
+      contact_phone: body.contact_phone !== undefined ? body.contact_phone : undefined,
+      contact_email: body.contact_email !== undefined ? body.contact_email : undefined,
     };
 
     // Clean up undefined updates

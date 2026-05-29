@@ -6,9 +6,9 @@ import { Input } from "@/src/components/ui/Input";
 import { Button } from "@/src/components/ui/Button";
 import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRotate, faCopy, faKey, faUser, faEnvelope, faPhone, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import { faRotate, faCopy, faKey, faUser, faAt } from "@fortawesome/free-solid-svg-icons";
 import type { Profile } from "@/src/types";
-import { applyPixMask, guessPixType, maskPhone } from "@/src/lib/masks";
+import { resolveAuthEmail } from "@/src/lib/auth/usernameResolver";
 
 function generateRandomPassword(length = 20): string {
   const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -52,22 +52,14 @@ export function ProfileCreateModal({
   const [saving, setSaving] = useState(false);
 
   // User/Auth fields
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState(() => generateRandomPassword());
-
-  // Profile fields
   const [name, setName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [pixKey, setPixKey] = useState("");
 
   const resetForm = useCallback(() => {
-    setEmail("");
+    setUsername("");
     setPassword(generateRandomPassword());
     setName("");
-    setContactEmail("");
-    setContactPhone("");
-    setPixKey("");
   }, []);
 
   const handleRegeneratePassword = () => {
@@ -90,11 +82,13 @@ export function ProfileCreateModal({
       document.getElementById("profile_form_name")?.focus();
       return;
     }
-    if (!email.trim()) {
-      addToast({ message: "O email de acesso é obrigatório.", type: "error" });
-      document.getElementById("profile_form_email")?.focus();
+    if (!username.trim()) {
+      addToast({ message: "O usuário de acesso é obrigatório.", type: "error" });
+      document.getElementById("profile_form_username")?.focus();
       return;
     }
+
+    const authEmail = resolveAuthEmail(username);
 
     setSaving(true);
     try {
@@ -103,11 +97,8 @@ export function ProfileCreateModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          email: email.trim(),
+          email: authEmail,
           password,
-          contact_email: contactEmail.trim() || null,
-          contact_phone: contactPhone.trim() || null,
-          pix_key: pixKey.trim() || null,
           createAffiliate,
         }),
       });
@@ -120,11 +111,11 @@ export function ProfileCreateModal({
       const result = await res.json();
       const createdProfile: Profile = result.data;
 
-      const successEmail = email;
+      const successUsername = username.trim().toLowerCase();
       const successPassword = password;
 
       const handleCopyAll = async () => {
-        const textToCopy = `Dados de Acesso - Doxi Affiliates\n\nLogin: ${successEmail}\nSenha: ${successPassword}\n\nLink: ${window.location.origin}/login`;
+        const textToCopy = `Dados de Acesso - Doxi Affiliates\n\nUsuário: ${successUsername}\nSenha: ${successPassword}\n\nLink: ${window.location.origin}/login`;
         try {
           await navigator.clipboard.writeText(textToCopy);
           addToast({ message: "Dados copiados com sucesso!", type: "success" });
@@ -202,14 +193,13 @@ export function ProfileCreateModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Cadastrar Novo Perfil"
-      size="lg"
+      title="Cadastrar Novo Usuário"
+      size="md"
       id="profile-create-modal"
       zIndex={150}
       closeOnOverlayClick={false}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        {/* ─── SEÇÃO 1: DADOS DO PERFIL ─── */}
         <section>
           <div style={sectionTitleStyle}>
             <FontAwesomeIcon icon={faUser} />
@@ -217,53 +207,20 @@ export function ProfileCreateModal({
           </div>
 
           <div className="form-grid">
-            <div className="form-col-6">
+            <div className="form-col-12">
               <Input
                 id="profile_form_name"
-                label="Nome"
+                label="Nome do Usuário"
                 placeholder="Ex: Olívia Maria"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={saving}
-              />
-            </div>
-            <div className="form-col-6">
-              <Input
-                id="profile_form_contact_email"
-                label="Email de Contato"
-                placeholder="Ex: contato@email.com"
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                disabled={saving}
-                inputMode="email"
-              />
-            </div>
-            <div className="form-col-6">
-              <Input
-                id="profile_form_phone"
-                label="Telefone"
-                placeholder="Ex: (11) 99999-9999"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(maskPhone(e.target.value))}
-                disabled={saving}
-                inputMode="tel"
-              />
-            </div>
-            <div className="form-col-6">
-              <Input
-                id="profile_form_pix"
-                label="Chave PIX"
-                placeholder="CPF, Email, Celular ou Chave Aleatória"
-                value={pixKey}
-                onChange={(e) => setPixKey(applyPixMask(e.target.value, guessPixType(e.target.value)))}
+                icon={<FontAwesomeIcon icon={faUser} style={{ fontSize: "13px" }} />}
                 disabled={saving}
               />
             </div>
           </div>
         </section>
 
-        {/* ─── SEÇÃO 2: DADOS DE ACESSO ─── */}
         <section>
           <div style={sectionTitleStyle}>
             <FontAwesomeIcon icon={faKey} />
@@ -271,25 +228,28 @@ export function ProfileCreateModal({
           </div>
 
           <div className="form-grid">
-            <div className="form-col-6">
+            <div className="form-col-12">
               <Input
-                id="profile_form_email"
-                label="Email de Login"
-                placeholder="Ex: anakin@email.com"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="profile_form_username"
+                label="Usuário de Acesso"
+                placeholder="Ex: anakin.skywalker"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 disabled={saving}
-                inputMode="email"
+                icon={<FontAwesomeIcon icon={faAt} style={{ fontSize: "13px" }} />}
               />
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", paddingLeft: "2px" }}>
+                O usuário é salvo sempre em letras minúsculas.
+              </div>
             </div>
 
-            <div className="form-col-6">
+            <div className="form-col-12" style={{ marginTop: "12px" }}>
               <Input
                 id="profile_form_password"
                 label="Senha Temporária"
                 value={password}
                 disabled
+                icon={<FontAwesomeIcon icon={faKey} style={{ fontSize: "13px" }} />}
                 rightLabel={
                   <div style={{ display: "flex", gap: "6px" }}>
                     <button
@@ -332,7 +292,7 @@ export function ProfileCreateModal({
             </div>
           </div>
 
-          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "-8px" }}>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "8px" }}>
             Uma senha aleatória foi gerada automaticamente. Copie e envie ao afiliado e ele poderá alterá-la depois.
           </div>
         </section>

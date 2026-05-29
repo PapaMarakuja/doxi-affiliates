@@ -5,7 +5,7 @@ import { Card } from "@/src/components/ui/Card";
 import { Input } from "@/src/components/ui/Input";
 import { Button } from "@/src/components/ui/Button";
 import { Table, Column } from "@/src/components/ui/Table";
-import type { Affiliate, AffiliateWithCoupons } from "@/src/types";
+import type { AffiliateWithCoupons } from "@/src/types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faPlus, faSearch, faTrash, faTag } from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
@@ -24,7 +24,7 @@ export default function AfiliadosPage() {
   const [searchName, setSearchName] = useState("");
   const [appliedSearchName, setAppliedSearchName] = useState("");
   const [orderBy, setOrderBy] = useState("created_at");
-  const [orderDesc, setOrderDesc] = useState(true);
+  const [orderDesc, setOrderDesc] = useState(false);
 
   const { addToast } = useToast();
   const confirm = useConfirmDialog();
@@ -56,13 +56,19 @@ export default function AfiliadosPage() {
   const handleSearch = () => {
     setPage(1);
     setAppliedSearchName(searchName);
-    fetchData();
+  };
+
+  const handleSearchInputChange = (val: string) => {
+    setSearchName(val);
+    if (val.trim() === "") {
+      setPage(1);
+      setAppliedSearchName("");
+    }
   };
 
   const handleSortChange = (newOrderBy: string, newOrderDesc: boolean) => {
     setOrderBy(newOrderBy);
     setOrderDesc(newOrderDesc);
-    fetchData();
   };
 
   const handleDelete = async (affiliate: AffiliateWithCoupons) => {
@@ -105,7 +111,19 @@ export default function AfiliadosPage() {
   }, [fetchData]);
 
   const columns: Column<AffiliateWithCoupons>[] = [
-    { key: "name", header: "Nome", sortable: true },
+    {
+      key: "name",
+      header: "Nome / Chave PIX",
+      sortable: true,
+      render: (item) => (
+        <div>
+          <div style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.name}</div>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+            PIX: {item.pix_key || "Não cadastrada"}
+          </div>
+        </div>
+      )
+    },
     {
       key: "coupons",
       header: "Cupom",
@@ -114,7 +132,7 @@ export default function AfiliadosPage() {
         const firstCoupon = item.coupons?.[0];
         if (!firstCoupon) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
         return (
-          <div 
+          <div
             onClick={(e) => {
               e.stopPropagation();
               navigator.clipboard.writeText(firstCoupon.code);
@@ -133,8 +151,18 @@ export default function AfiliadosPage() {
               fontWeight: 700,
               fontSize: '13px',
               boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-              cursor: 'pointer'
-            }}>
+              cursor: 'pointer',
+              transition: 'transform 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.borderColor = "var(--pink-light)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.borderColor = "var(--pink-dark)";
+            }}
+          >
             <FontAwesomeIcon icon={faTag} style={{ fontSize: '10px', color: 'var(--pink-dark)' }} />
             <span style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>{firstCoupon.code}</span>
             <span style={{
@@ -153,7 +181,7 @@ export default function AfiliadosPage() {
     },
     {
       key: "commission_rate", header: "Comissão", sortable: true,
-      render: (item) => item.commission_rate?.toFixed(2) + " %"
+      render: (item) => (item.commission_rate !== null && item.commission_rate !== undefined) ? item.commission_rate.toFixed(2) + " %" : "—"
     },
     {
       key: "created_at",
@@ -170,71 +198,73 @@ export default function AfiliadosPage() {
         <div className="flex justify-center items-center gap-2">
           <Button
             variant="info"
-            style={{
-              minHeight: "unset",
-              width: "auto",
-              fontSize: "12px",
-              padding: '0.5rem',
-            }}
+            circle
             onClick={() => router.push(`/afiliados/${item.id}`)}
+            title="Editar Afiliado"
           >
-            <FontAwesomeIcon icon={faPen} />
+            <FontAwesomeIcon icon={faPen} style={{ fontSize: "13px" }} />
           </Button>
 
           <Button
             variant="danger"
-            style={{
-              minHeight: "unset",
-              width: "auto",
-              fontSize: "12px",
-              padding: '0.5rem',
-            }}
+            circle
             onClick={() => handleDelete(item)}
+            title="Excluir Afiliado"
           >
-            <FontAwesomeIcon icon={faTrash} />
+            <FontAwesomeIcon icon={faTrash} style={{ fontSize: "13px" }} />
           </Button>
         </div>
       )
-
     }
   ];
 
   return (
-    <div className="flex flex-col gap-8">
-      <Card>
-        <div className="form-grid">
-          <div className="form-col-6" style={{ position: 'relative' }}>
+    <div className="flex flex-col gap-6">
+      <div className="flex justify-between items-center" style={{ marginBottom: "8px" }}>
+        <div>
+          <h2 className="page-title">Gestão de Afiliados</h2>
+          <p className="page-subtitle">Consulte, cadastre e gerencie a comissão, cupons e vínculos dos afiliados da plataforma.</p>
+        </div>
+        <Button
+          variant="primary"
+          style={{
+            width: "auto",
+            display: "flex",
+          }}
+          onClick={() => router.push("/afiliados/novo")}
+        >
+          <FontAwesomeIcon icon={faPlus} />
+          Novo Afiliado
+        </Button>
+      </div>
+
+      <Card style={{ padding: "24px", borderRadius: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "12px", flex: 1, maxWidth: "480px" }}>
             <Input
-              label="Nome do Afiliado"
-              placeholder="Digite o nome para buscar..."
+              placeholder="Buscar por afiliado ou PIX..."
               value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
+              onChange={(e) => handleSearchInputChange(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              icon={<FontAwesomeIcon icon={faSearch} onClick={handleSearch} style={{ cursor: "pointer" }} />}
+              style={{ margin: 0 }}
             />
           </div>
-        </div>
-
-        <div className="form-grid">
-          <div className="form-col-6" style={{ display: "flex", gap: "16px" }}>
-            <Button onClick={handleSearch} disabled={loadingList} loading={loadingList} style={{ width: "auto" }}>
-              <FontAwesomeIcon icon={faSearch} style={{ marginRight: "8px" }} />
-              Consultar
-            </Button>
-
+          {appliedSearchName && (
             <Button
-              variant="primary"
-              outline
-              style={{ width: "auto" }}
-              onClick={() => router.push("/afiliados/novo")}
+              variant="transparent"
+              style={{ width: "auto", fontSize: "13px", color: "var(--pink-dark)", padding: "0 8px" }}
+              onClick={() => {
+                setSearchName("");
+                setPage(1);
+                setAppliedSearchName("");
+              }}
             >
-              <FontAwesomeIcon icon={faPlus} style={{ marginRight: "8px" }} />
-              Cadastrar
+              Limpar busca
             </Button>
-          </div>
+          )}
         </div>
-      </Card>
 
-      <Card>
         <Table
           data={data}
           columns={columns}

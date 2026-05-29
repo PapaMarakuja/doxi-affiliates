@@ -1,13 +1,17 @@
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
-import type { ApiResponse, Profile } from "@/src/types";
+import type { ApiResponse, Profile, Affiliate } from "@/src/types";
 
-export type UpdateProfilePayload = Pick<
-  Profile,
-  "name" | "pix_key" | "contact_phone" | "contact_email"
->;
+export interface UpdateProfilePayload {
+  name?: string;
+  pix_key?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+}
 
 export class ProfileService {
-  async updateProfile(payload: Partial<UpdateProfilePayload>): Promise<ApiResponse<Profile>> {
+  async updateProfile(
+    payload: Partial<UpdateProfilePayload>
+  ): Promise<ApiResponse<{ profile: Profile; affiliate: Affiliate | null }>> {
     const supabase = await createSupabaseServerClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -16,24 +20,70 @@ export class ProfileService {
       return { data: null, error: authError?.message ?? "Sessão não encontrada." };
     }
 
-    const updateData: Partial<UpdateProfilePayload> = {};
+    const profileUpdate: Record<string, unknown> = {};
+    if (payload.name !== undefined) profileUpdate.name = payload.name;
 
-    if (payload.name !== undefined) updateData.name = payload.name;
-    if (payload.pix_key !== undefined) updateData.pix_key = payload.pix_key;
-    if (payload.contact_phone !== undefined) updateData.contact_phone = payload.contact_phone;
-    if (payload.contact_email !== undefined) updateData.contact_email = payload.contact_email;
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .update(updateData)
-      .eq("user_id", user.id)
-      .select()
-      .single();
-
-    if (error || !data) {
-      return { data: null, error: error?.message ?? "Falha ao atualizar o perfil." };
+    let updatedProfile: Profile | null = null;
+    if (Object.keys(profileUpdate).length > 0) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update(profileUpdate)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+      if (error || !data) {
+        return { data: null, error: error?.message ?? "Falha ao atualizar o perfil." };
+      }
+      updatedProfile = data as Profile;
+    } else {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      if (error || !data) {
+        return { data: null, error: error?.message ?? "Falha ao carregar perfil." };
+      }
+      updatedProfile = data as Profile;
     }
 
-    return { data: data as Profile, error: null };
+    let updatedAffiliate: Affiliate | null = null;
+    if (updatedProfile.role === "affiliate") {
+      const affiliateUpdate: Record<string, unknown> = {};
+      if (payload.pix_key !== undefined) affiliateUpdate.pix_key = payload.pix_key;
+      if (payload.contact_phone !== undefined) affiliateUpdate.contact_phone = payload.contact_phone;
+      if (payload.contact_email !== undefined) affiliateUpdate.contact_email = payload.contact_email;
+      if (payload.name !== undefined) affiliateUpdate.name = payload.name;
+
+      if (Object.keys(affiliateUpdate).length > 0) {
+        const { data, error } = await supabase
+          .from("affiliates")
+          .update(affiliateUpdate)
+          .eq("profile_id", updatedProfile.id)
+          .select()
+          .single();
+        if (!error && data) {
+          updatedAffiliate = data as Affiliate;
+        } else {
+          console.error("Error updating affiliate in updateProfile:", error);
+          // If update fails (e.g. affiliate not created yet), try to fetch current
+          const { data: currentAff } = await supabase
+            .from("affiliates")
+            .select("*")
+            .eq("profile_id", updatedProfile.id)
+            .single();
+          updatedAffiliate = (currentAff as Affiliate) || null;
+        }
+      } else {
+        const { data } = await supabase
+          .from("affiliates")
+          .select("*")
+          .eq("profile_id", updatedProfile.id)
+          .single();
+        updatedAffiliate = (data as Affiliate) || null;
+      }
+    }
+
+    return { data: { profile: updatedProfile, affiliate: updatedAffiliate }, error: null };
   }
 }

@@ -159,9 +159,6 @@ export function ProfileLinkModal({
                       Nome
                     </th>
                     <th className="table-th-text" style={thStyle}>
-                      Contato
-                    </th>
-                    <th className="table-th-text" style={thStyle}>
                       Role
                     </th>
                     <th className="table-th-text" style={{ ...thStyle, textAlign: "center" }}>
@@ -183,25 +180,6 @@ export function ProfileLinkModal({
                         <span style={{ fontWeight: 600 }}>
                           {profile.name}
                         </span>
-                      </td>
-                      <td style={tdStyle}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "13px" }}>
-                          {profile.contact_email && (
-                            <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)" }}>
-                              <FontAwesomeIcon icon={faEnvelope} style={{ fontSize: "11px" }} />
-                              {profile.contact_email}
-                            </span>
-                          )}
-                          {profile.contact_phone && (
-                            <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)" }}>
-                              <FontAwesomeIcon icon={faPhone} style={{ fontSize: "11px" }} />
-                              {profile.contact_phone}
-                            </span>
-                          )}
-                          {!profile.contact_email && !profile.contact_phone && (
-                            <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>—</span>
-                          )}
-                        </div>
                       </td>
                       <td style={tdStyle}>
                         <span

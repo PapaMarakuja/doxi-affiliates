@@ -1,6 +1,7 @@
 import { getAuthenticatedAdmin } from "@/src/lib/auth/session";
 import { AffiliateRepository } from "@/src/repositories/affiliate.repository";
 import { AuthService } from "@/src/services/auth.service";
+import { resolveAuthEmail } from "@/src/lib/auth/usernameResolver";
 import { NextRequest } from "next/server";
 
 /**
@@ -47,16 +48,23 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    if (!body.name || !body.email || !body.password) {
+    // Accept either a plain `username` or a pre-built `email`.
+    // If `username` is provided, resolve it to the system e-mail address.
+    const rawIdentifier: string = body.username ?? body.email ?? "";
+    if (!body.name || !rawIdentifier || !body.password) {
       return Response.json(
-        { error: "Os campos nome, email e senha são obrigatórios." },
+        { error: "Os campos nome, usuário e senha são obrigatórios." },
         { status: 400 }
       );
     }
 
+    const authEmail = rawIdentifier.includes("@")
+      ? rawIdentifier
+      : resolveAuthEmail(rawIdentifier);
+
     const authService = new AuthService();
     const result = await authService.createUser({
-      email: body.email,
+      email: authEmail,
       password: body.password,
       name: body.name,
       role: "affiliate",

@@ -42,14 +42,17 @@ export class AuthService {
         };
       }
 
-      // Buscar o perfil para obter a role
-      const { data: profile, error: profileError } = await supabase
+      // Buscar o perfil via service client para evitar bloqueio de RLS
+      // (o cookie de sessão pode ainda não estar disponível server-side neste ponto)
+      const serviceClient = await createSupabaseServiceClient();
+      const { data: profile, error: profileError } = await serviceClient
         .from("profiles")
         .select("role")
         .eq("user_id", data.user.id)
         .single();
 
       if (profileError) {
+        console.error("AuthService.login — profile fetch error:", profileError);
         return {
           data: null,
           error: "Erro ao carregar perfil do usuário.",
@@ -110,10 +113,8 @@ export class AuthService {
         user_id: newAuthUser.user.id,
         name: payload.name,
         role,
+        temp_password: payload.password,
       };
-      if (payload.pix_key !== undefined) profileInsert.pix_key = payload.pix_key;
-      if (payload.contact_phone !== undefined) profileInsert.contact_phone = payload.contact_phone;
-      if (payload.contact_email !== undefined) profileInsert.contact_email = payload.contact_email;
 
       const { data: profile, error: profileError } = await serviceClient
         .from("profiles")
@@ -139,6 +140,9 @@ export class AuthService {
             .insert({
               profile_id: profile.id,
               name: payload.name,
+              pix_key: payload.pix_key ?? null,
+              contact_phone: payload.contact_phone ?? null,
+              contact_email: payload.contact_email ?? null,
             })
             .select()
             .single();

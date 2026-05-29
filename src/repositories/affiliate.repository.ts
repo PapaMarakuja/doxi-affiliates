@@ -118,7 +118,7 @@ export class AffiliateRepository {
     let query = supabase.from("affiliates").select("*, coupons(*)", { count: "exact" });
 
     if (searchName) {
-      query = query.ilike("name", `%${searchName}%`);
+      query = query.or(`name.ilike.%${searchName}%,pix_key.ilike.%${searchName}%`);
     }
 
     query = query.order(orderBy, { ascending: !orderDesc });

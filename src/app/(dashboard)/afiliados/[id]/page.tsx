@@ -22,10 +22,24 @@ import {
   faUnlink,
   faSave,
   faArrowLeft,
+  faIdCard,
+  faRandom,
+  faChevronDown,
+  faRotate,
+  faCopy,
+  faTimes,
 } from '@fortawesome/free-solid-svg-icons';
 import type { Affiliate, Coupon, Profile } from '@/src/types';
 import { returnRole } from '@/src/lib/utils';
 import { useConfirmDialog } from '@/src/contexts/ConfirmDialogContext';
+import { applyPixMask, guessPixType, maskPhone } from '@/src/lib/masks';
+
+const PIX_TYPES = [
+  { value: "cpf_cnpj", label: "CPF/CNPJ", icon: faIdCard },
+  { value: "phone", label: "Celular", icon: faPhone },
+  { value: "email", label: "E-mail", icon: faEnvelope },
+  { value: "random", label: "Aleatória", icon: faRandom }
+] as const;
 
 export default function AfiliadoEditPage() {
   const { id } = useParams() as { id: string };
@@ -48,6 +62,12 @@ export default function AfiliadoEditPage() {
   const confirm = useConfirmDialog();
   const currentAffiliateId = isNew ? createdAffiliateId : id;
   const canManageAffiliateLinks = !!currentAffiliateId;
+
+  // New fields on Affiliate
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [pixKey, setPixKey] = useState('');
+  const [manualPixType, setManualPixType] = useState<'cpf_cnpj' | 'phone' | 'email' | 'random' | null>(null);
 
   // Modal states
   const [showLinkCouponModal, setShowLinkCouponModal] = useState(false);
@@ -73,6 +93,9 @@ export default function AfiliadoEditPage() {
         setName(affiliate.name || '');
         setCommissionRate(affiliate.commission_rate?.toString() || '');
         setProfileId(affiliate.profile_id || null);
+        setContactEmail(affiliate.contact_email || '');
+        setContactPhone(affiliate.contact_phone || '');
+        setPixKey(affiliate.pix_key || '');
       }
       if (coupons) {
         setCoupons(coupons);
@@ -113,6 +136,9 @@ export default function AfiliadoEditPage() {
       name: name.trim(),
       commission_rate: commissionValue,
       profile_id: profileId,
+      contact_email: contactEmail.trim() || null,
+      contact_phone: contactPhone.trim() || null,
+      pix_key: pixKey.trim() || null,
     };
   };
 
@@ -213,6 +239,30 @@ export default function AfiliadoEditPage() {
     }
   };
 
+  const handleCancel = async () => {
+    const confirmed = await confirm({
+      title: 'Cancelar Alterações',
+      message: 'Tem certeza que deseja sair? Todas as alterações não salvas serão perdidas.',
+      confirmText: 'Sim, sair',
+      cancelText: 'Não, continuar',
+      type: 'warning',
+    });
+
+    if (confirmed) {
+      router.push('/afiliados');
+    }
+  };
+
+  const handleCopyClubLink = async (item: any) => {
+    const textToCopy = `Dados de Acesso - Doxi Affiliates\n\nUsuário: ${item.name}\nSenha: ${item.temp_password}\n\nLink: ${window.location.origin}/login`;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      addToast({ message: "Link copiado!", type: "success" });
+    } catch {
+      addToast({ message: "Erro ao copiar link.", type: "error" });
+    }
+  };
+
   const handleOpenCouponModal = async () => {
     const affiliateIdForCoupon = await ensureAffiliateCreated(false);
     if (!affiliateIdForCoupon) return;
@@ -265,30 +315,23 @@ export default function AfiliadoEditPage() {
       render: (item) => (
         <div className='flex justify-center items-center gap-2'>
           <Button
-            variant='info'
-            style={{
-              minHeight: 'unset',
-              width: 'auto',
-              fontSize: '12px',
-              padding: '0.5rem',
-            }}
+            variant="info"
+            circle
+            size="sm"
             onClick={() => handleEditCoupon(item)}
+            title="Editar Cupom"
           >
-            <FontAwesomeIcon icon={faPen} />
+            <FontAwesomeIcon icon={faPen} style={{ fontSize: "11px" }} />
           </Button>
 
           <Button
-            variant='danger'
-            outline
-            style={{
-              minHeight: 'unset',
-              width: 'auto',
-              fontSize: '12px',
-              padding: '0.5rem',
-            }}
+            variant="danger"
+            circle
+            size="sm"
             onClick={() => handleUnlinkCoupon(item)}
+            title="Desvincular Cupom"
           >
-            <FontAwesomeIcon icon={faUnlink} />
+            <FontAwesomeIcon icon={faUnlink} style={{ fontSize: "11px" }} />
           </Button>
         </div>
       ),
@@ -367,81 +410,9 @@ export default function AfiliadoEditPage() {
       ),
     },
     {
-      key: 'contact_email',
-      header: 'Email',
-      sortable: false,
-      render: (item) =>
-        item.contact_email ? (
-          <span
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <FontAwesomeIcon icon={faEnvelope} style={{ fontSize: '11px' }} />
-            {item.contact_email}
-          </span>
-        ) : (
-          <span style={{ color: 'var(--text-muted)' }}>—</span>
-        ),
-    },
-    {
-      key: 'pix_key',
-      header: 'Pix',
-      sortable: false,
-      render: (item) =>
-        item.pix_key ? (
-          <span
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-            }}
-            title='Clique para copiar'
-            onClick={() => {
-              navigator.clipboard.writeText(item.pix_key!);
-              addToast({ message: 'Chave Pix copiada!', type: 'success' });
-            }}
-          >
-            {item.pix_key}
-          </span>
-        ) : (
-          <span style={{ color: 'var(--text-muted)' }}>—</span>
-        ),
-    },
-    {
-      key: 'contact_phone',
-      header: 'Telefone',
-      sortable: false,
-      render: (item) =>
-        item.contact_phone ? (
-          <span
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <FontAwesomeIcon icon={faPhone} style={{ fontSize: '11px' }} />
-            {item.contact_phone}
-          </span>
-        ) : (
-          <span style={{ color: 'var(--text-muted)' }}>—</span>
-        ),
-    },
-    {
       key: 'role',
       header: 'Role',
       sortable: false,
-      style: { width: '1%' },
       render: (item) => (
         <span
           style={{
@@ -464,6 +435,62 @@ export default function AfiliadoEditPage() {
         </span>
       ),
     },
+    {
+      key: 'temp_password',
+      header: 'Senha Temporária',
+      sortable: false,
+      render: (item) =>
+        item.temp_password ? (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '13px',
+              fontFamily: 'monospace',
+              background: 'var(--hover)',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              color: 'var(--text-main)',
+              cursor: 'pointer',
+              border: '1px solid var(--border)',
+            }}
+            title='Clique para copiar a senha temporária'
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(item.temp_password!);
+                addToast({ message: 'Senha temporária copiada!', type: 'success' });
+              } catch {
+                addToast({ message: 'Erro ao copiar a senha.', type: 'error' });
+              }
+            }}
+          >
+            <FontAwesomeIcon icon={faCopy} style={{ fontSize: '11px', color: 'var(--pink-dark)' }} />
+            {item.temp_password}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
+        ),
+    },
+    {
+      key: 'actions',
+      header: 'Ação',
+      sortable: false,
+      style: { width: '1%' },
+      render: (item) => (
+        <div className='flex justify-end items-center gap-2'>
+          <Button
+            variant="info"
+            circle
+            size="sm"
+            onClick={() => handleCopyClubLink(item)}
+            title="Copiar link para o clube"
+          >
+            <FontAwesomeIcon icon={faCopy} style={{ fontSize: "11px" }} />
+          </Button>
+        </div>
+      ),
+    }
   ];
 
   const handleProfileLinked = (profile: Profile) => {
@@ -510,12 +537,45 @@ export default function AfiliadoEditPage() {
   return (
     <div className='flex flex-col gap-8'>
       <div
-        className='flex justify-between items-center'
-        style={{ marginBottom: '-15px' }}
+        className='flex items-center gap-4'
+        style={{ marginBottom: '8px' }}
       >
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: 'var(--foreground)' }}>
-          {isNew ? 'Novo Afiliado' : 'Editar Afiliado'}
-        </h2>
+        <button
+          onClick={handleCancel}
+          style={{
+            background: "var(--hover)",
+            border: "1px solid var(--border)",
+            color: "var(--text-main)",
+            width: "36px",
+            height: "36px",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "transform 0.15s, background-color 0.15s",
+            outline: "none"
+          }}
+          title="Voltar"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+            e.currentTarget.style.background = "var(--border)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.background = "var(--hover)";
+          }}
+        >
+          <FontAwesomeIcon icon={faArrowLeft} style={{ fontSize: "14px" }} />
+        </button>
+        <div>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>
+            {isNew ? 'Cadastrar Novo Afiliado' : 'Editar Afiliado'}
+          </h1>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {isNew ? 'Crie um afiliado na plataforma para vincular cupons e usuários.' : `Gerencie os dados e configurações do afiliado ${name}.`}
+          </p>
+        </div>
       </div>
 
       <Card>
@@ -525,7 +585,7 @@ export default function AfiliadoEditPage() {
             Dados Gerais
           </h3>
           <div className='form-grid'>
-            <div className='form-col-6'>
+            <div className='form-col-4'>
               <Input
                 label='Nome do Afiliado'
                 placeholder='Ex: João Silva'
@@ -539,7 +599,7 @@ export default function AfiliadoEditPage() {
                 </span>
               )}
             </div>
-            <div className='form-col-6'>
+            <div className='form-col-4'>
               <Input
                 label='Comissão do Afiliado (%)'
                 placeholder='Ex: 10'
@@ -552,19 +612,104 @@ export default function AfiliadoEditPage() {
                 }
               />
             </div>
+            <div className='form-col-4'>
+              <Input
+                label='Email de Contato'
+                placeholder='Ex: contato@email.com'
+                type='email'
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                disabled={loadingAffiliate}
+              />
+            </div>
+            <div className='form-col-4'>
+              <Input
+                label='Telefone de Contato'
+                placeholder='Ex: (11) 99999-9999'
+                type='tel'
+                value={contactPhone}
+                onChange={(e) => setContactPhone(maskPhone(e.target.value))}
+                disabled={loadingAffiliate}
+              />
+            </div>
+            <div className='form-col-4'>
+              {(() => {
+                const currentPixType = manualPixType || guessPixType(pixKey || "");
+                const currentPixTypeConfig = PIX_TYPES.find(t => t.value === currentPixType) || PIX_TYPES[3];
+
+                const pixSelector = (
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "4px 8px 4px 10px",
+                      background: "var(--input-bg)",
+                      borderRadius: "16px",
+                      cursor: "pointer",
+                      color: "var(--text-main)",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      border: "1px solid var(--sidebar-border)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                    }}
+                  >
+                    <FontAwesomeIcon icon={currentPixTypeConfig.icon} style={{ color: "var(--pink-dark)" }} />
+                    <span>{currentPixTypeConfig.label}</span>
+                    <FontAwesomeIcon icon={faChevronDown} style={{ fontSize: "10px", opacity: 0.5 }} />
+                    <select
+                      value={currentPixType}
+                      onChange={(e) => {
+                        const type = e.target.value as any;
+                        setManualPixType(type);
+                        const rawValue = type === "phone" || type === "cpf_cnpj" ? pixKey.replace(/\D/g, "") : pixKey;
+                        const masked = applyPixMask(rawValue, type);
+                        setPixKey(masked);
+                      }}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        opacity: 0,
+                        cursor: "pointer",
+                        width: "100%",
+                      }}
+                      title="Tipo de Chave Pix"
+                    >
+                      {PIX_TYPES.map(t => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+
+                return (
+                  <Input
+                    label="Chave Pix"
+                    value={pixKey}
+                    onChange={(e) => {
+                      const type = manualPixType || guessPixType(e.target.value);
+                      setPixKey(applyPixMask(e.target.value, type));
+                    }}
+                    placeholder="CPF, e-mail, telefone..."
+                    disabled={loadingAffiliate}
+                    suffix={pixSelector}
+                  />
+                );
+              })()}
+            </div>
           </div>
         </section>
 
         <hr style={{ borderTop: '1px solid var(--border)', margin: '2rem 0' }} />
 
         <div className='flex flex-col lg:flex-row gap-8 items-start'>
-          {/* SESSÃO 2: VÍNCULO DE PERFIL */}
           <section style={{ flex: 1, width: '100%' }}>
             <div
               className='flex justify-between items-center'
               style={{ marginBottom: '1rem' }}
             >
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>Vínculo de Perfil</h3>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>Vínculo de Perfil/Usuário</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {linkedProfile ? (
                   <Button
@@ -664,7 +809,7 @@ export default function AfiliadoEditPage() {
 
         <hr style={{ borderTop: '1px solid var(--border)', margin: '2rem 0' }} />
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
           <Button
             variant='primary'
             onClick={() => handleSave(true)}
@@ -682,9 +827,9 @@ export default function AfiliadoEditPage() {
             variant='info'
             outline
             style={{ width: 'auto' }}
-            onClick={() => router.push('/afiliados')}
+            onClick={handleCancel}
           >
-            <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: '8px' }} />
+            <FontAwesomeIcon icon={faArrowLeft} />
             Voltar
           </Button>
         </div>

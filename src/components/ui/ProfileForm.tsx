@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -15,7 +15,7 @@ import {
   faRandom,
   faChevronDown
 } from "@fortawesome/free-solid-svg-icons";
-import type { Profile } from "@/src/types";
+import type { Profile, Affiliate } from "@/src/types";
 import { Input } from "@/src/components/ui/Input";
 import { Button } from "@/src/components/ui/Button";
 import { useToast } from "@/src/contexts/ToastContext";
@@ -30,7 +30,9 @@ export type ProfileFormMode = "view" | "edit";
 
 export interface ProfileFormProps {
   profile: Profile;
+  affiliate?: Affiliate | null;
   onProfileUpdated?: (updated: Profile) => void;
+  onAffiliateUpdated?: (updated: Affiliate) => void;
   initialMode?: ProfileFormMode;
 }
 
@@ -41,14 +43,12 @@ interface FormValues {
   contact_email: string;
 }
 
-
-
-function toFormValues(profile: Profile): FormValues {
+function toFormValues(profile: Profile, affiliate?: Affiliate | null): FormValues {
   return {
     name: profile.name ?? "",
-    pix_key: profile.pix_key ?? "",
-    contact_phone: profile.contact_phone ?? "",
-    contact_email: profile.contact_email ?? "",
+    pix_key: affiliate?.pix_key ?? "",
+    contact_phone: affiliate?.contact_phone ?? "",
+    contact_email: affiliate?.contact_email ?? "",
   };
 }
 
@@ -65,14 +65,27 @@ const PIX_TYPES = [
 ] as const;
 type PixType = typeof PIX_TYPES[number]["value"];
 
-export function ProfileForm({ profile, onProfileUpdated, initialMode = "view" }: ProfileFormProps) {
+export function ProfileForm({
+  profile,
+  affiliate,
+  onProfileUpdated,
+  onAffiliateUpdated,
+  initialMode = "view"
+}: ProfileFormProps) {
   const [mode, setMode] = useState<ProfileFormMode>(initialMode);
   const [currentProfile, setCurrentProfile] = useState<Profile>(profile);
-  const [values, setValues] = useState<FormValues>(toFormValues(profile));
+  const [currentAffiliate, setCurrentAffiliate] = useState<Affiliate | null | undefined>(affiliate);
+  const [values, setValues] = useState<FormValues>(toFormValues(profile, affiliate));
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ProfileValidationErrors>({});
   const { addToast } = useToast();
   const [manualPixType, setManualPixType] = useState<PixType | null>(null);
+
+  useEffect(() => {
+    setCurrentProfile(profile);
+    setCurrentAffiliate(affiliate);
+    setValues(toFormValues(profile, affiliate));
+  }, [profile, affiliate]);
 
   function handleChange(field: keyof FormValues) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,22 +106,20 @@ export function ProfileForm({ profile, onProfileUpdated, initialMode = "view" }:
   }
 
   function handleCancel() {
-    setValues(toFormValues(currentProfile));
+    setValues(toFormValues(currentProfile, currentAffiliate));
     setFieldErrors({});
     setManualPixType(null);
     setMode("view");
   }
-
-
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
 
     const payload = {
       name: values.name.trim() || undefined,
-      pix_key: values.pix_key.trim() || null,
-      contact_phone: values.contact_phone.trim() || null,
-      contact_email: values.contact_email.trim() || null,
+      pix_key: currentProfile.role === "affiliate" ? (values.pix_key.trim() || null) : undefined,
+      contact_phone: currentProfile.role === "affiliate" ? (values.contact_phone.trim() || null) : undefined,
+      contact_email: currentProfile.role === "affiliate" ? (values.contact_email.trim() || null) : undefined,
     };
 
     const errors = validateProfileUpdate(payload);
@@ -137,12 +148,16 @@ export function ProfileForm({ profile, onProfileUpdated, initialMode = "view" }:
         return;
       }
 
-      const updated: Profile = json.data;
-      setCurrentProfile(updated);
-      setValues(toFormValues(updated));
+      const { profile: updatedProfile, affiliate: updatedAffiliate } = json.data;
+      setCurrentProfile(updatedProfile);
+      setCurrentAffiliate(updatedAffiliate);
+      setValues(toFormValues(updatedProfile, updatedAffiliate));
       setMode("view");
       addToast({ message: "Perfil atualizado com sucesso!", type: "success" });
-      onProfileUpdated?.(updated);
+      onProfileUpdated?.(updatedProfile);
+      if (updatedAffiliate) {
+        onAffiliateUpdated?.(updatedAffiliate);
+      }
     } catch {
       addToast({
         message: "Erro de conexão. Verifique sua internet e tente novamente.",
@@ -160,8 +175,6 @@ export function ProfileForm({ profile, onProfileUpdated, initialMode = "view" }:
       noValidate
       id="profile-form"
     >
-
-
       <div className="profile-form-avatar">
         <div className="profile-avatar-circle">
           <FontAwesomeIcon icon={faUser} />
@@ -184,21 +197,25 @@ export function ProfileForm({ profile, onProfileUpdated, initialMode = "view" }:
             label="Nome"
             value={currentProfile.name}
           />
-          <ProfileViewRow
-            icon={<FontAwesomeIcon icon={faEnvelope} />}
-            label="E-mail de contato"
-            value={currentProfile.contact_email}
-          />
-          <ProfileViewRow
-            icon={<FontAwesomeIcon icon={faPhone} />}
-            label="Telefone"
-            value={currentProfile.contact_phone}
-          />
-          <ProfileViewRow
-            icon={<FontAwesomeIcon icon={faKey} />}
-            label="Chave Pix"
-            value={currentProfile.pix_key}
-          />
+          {currentProfile.role === "affiliate" && (
+            <>
+              <ProfileViewRow
+                icon={<FontAwesomeIcon icon={faEnvelope} />}
+                label="E-mail de contato"
+                value={currentAffiliate?.contact_email}
+              />
+              <ProfileViewRow
+                icon={<FontAwesomeIcon icon={faPhone} />}
+                label="Telefone"
+                value={currentAffiliate?.contact_phone}
+              />
+              <ProfileViewRow
+                icon={<FontAwesomeIcon icon={faKey} />}
+                label="Chave Pix"
+                value={currentAffiliate?.pix_key}
+              />
+            </>
+          )}
         </div>
       ) : (
         <div className="profile-edit-fields">
@@ -213,95 +230,99 @@ export function ProfileForm({ profile, onProfileUpdated, initialMode = "view" }:
             error={fieldErrors.name}
             disabled={saving}
           />
-          <Input
-            id="profile-email"
-            label="E-mail de contato"
-            type="email"
-            icon={<FontAwesomeIcon icon={faEnvelope} />}
-            value={values.contact_email}
-            onChange={handleChange("contact_email")}
-            placeholder="seu@email.com"
-            autoComplete="email"
-            error={fieldErrors.contact_email}
-            disabled={saving}
-          />
-          <Input
-            id="profile-phone"
-            label="Telefone"
-            type="tel"
-            icon={<FontAwesomeIcon icon={faPhone} />}
-            value={values.contact_phone}
-            onChange={handleChange("contact_phone")}
-            placeholder="(11) 99999-9999"
-            autoComplete="tel"
-            error={fieldErrors.contact_phone}
-            disabled={saving}
-          />
-          {(() => {
-            const currentPixType = manualPixType || guessPixType(values.pix_key || "");
-            const currentPixTypeConfig = PIX_TYPES.find(t => t.value === currentPixType) || PIX_TYPES[3];
-
-            const pixSelector = (
-              <div
-                style={{
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "4px 8px 4px 10px",
-                  background: "var(--input-bg)",
-                  borderRadius: "16px",
-                  cursor: "pointer",
-                  color: "var(--text-main)",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  border: "1px solid var(--sidebar-border)",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
-                }}
-              >
-                <FontAwesomeIcon icon={currentPixTypeConfig.icon} style={{ color: "var(--pink-dark)" }} />
-                <span>{currentPixTypeConfig.label}</span>
-                <FontAwesomeIcon icon={faChevronDown} style={{ fontSize: "10px", opacity: 0.5 }} />
-                <select
-                  value={currentPixType}
-                  onChange={(e) => {
-                    const type = e.target.value as PixType;
-                    setManualPixType(type);
-                    const rawValue = type === "phone" || type === "cpf_cnpj" ? values.pix_key.replace(/\D/g, "") : values.pix_key;
-                    const masked = applyPixMask(rawValue, type);
-                    setValues(prev => ({ ...prev, pix_key: masked }));
-                  }}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    opacity: 0,
-                    cursor: "pointer",
-                    width: "100%",
-                  }}
-                  title="Tipo de Chave Pix"
-                >
-                  {PIX_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-            );
-
-            return (
+          {currentProfile.role === "affiliate" && (
+            <>
               <Input
-                id="profile-pix"
-                label="Chave Pix"
-                icon={<FontAwesomeIcon icon={faKey} />}
-                value={values.pix_key}
-                onChange={handleChange("pix_key")}
-                placeholder="CPF, e-mail, telefone..."
-                error={fieldErrors.pix_key}
+                id="profile-email"
+                label="E-mail de contato"
+                type="email"
+                icon={<FontAwesomeIcon icon={faEnvelope} />}
+                value={values.contact_email}
+                onChange={handleChange("contact_email")}
+                placeholder="seu@email.com"
+                autoComplete="email"
+                error={fieldErrors.contact_email}
                 disabled={saving}
-                suffix={pixSelector}
-                className="pix-input-override"
               />
-            );
-          })()}
+              <Input
+                id="profile-phone"
+                label="Telefone"
+                type="tel"
+                icon={<FontAwesomeIcon icon={faPhone} />}
+                value={values.contact_phone}
+                onChange={handleChange("contact_phone")}
+                placeholder="(11) 99999-9999"
+                autoComplete="tel"
+                error={fieldErrors.contact_phone}
+                disabled={saving}
+              />
+              {(() => {
+                const currentPixType = manualPixType || guessPixType(values.pix_key || "");
+                const currentPixTypeConfig = PIX_TYPES.find(t => t.value === currentPixType) || PIX_TYPES[3];
+
+                const pixSelector = (
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "4px 8px 4px 10px",
+                      background: "var(--input-bg)",
+                      borderRadius: "16px",
+                      cursor: "pointer",
+                      color: "var(--text-main)",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      border: "1px solid var(--sidebar-border)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                    }}
+                  >
+                    <FontAwesomeIcon icon={currentPixTypeConfig.icon} style={{ color: "var(--pink-dark)" }} />
+                    <span>{currentPixTypeConfig.label}</span>
+                    <FontAwesomeIcon icon={faChevronDown} style={{ fontSize: "10px", opacity: 0.5 }} />
+                    <select
+                      value={currentPixType}
+                      onChange={(e) => {
+                        const type = e.target.value as PixType;
+                        setManualPixType(type);
+                        const rawValue = type === "phone" || type === "cpf_cnpj" ? values.pix_key.replace(/\D/g, "") : values.pix_key;
+                        const masked = applyPixMask(rawValue, type);
+                        setValues(prev => ({ ...prev, pix_key: masked }));
+                      }}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        opacity: 0,
+                        cursor: "pointer",
+                        width: "100%",
+                      }}
+                      title="Tipo de Chave Pix"
+                    >
+                      {PIX_TYPES.map(t => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+
+                return (
+                  <Input
+                    id="profile-pix"
+                    label="Chave Pix"
+                    icon={<FontAwesomeIcon icon={faKey} />}
+                    value={values.pix_key}
+                    onChange={handleChange("pix_key")}
+                    placeholder="CPF, e-mail, telefone..."
+                    error={fieldErrors.pix_key}
+                    disabled={saving}
+                    suffix={pixSelector}
+                    className="pix-input-override"
+                  />
+                );
+              })()}
+            </>
+          )}
         </div>
       )}
 

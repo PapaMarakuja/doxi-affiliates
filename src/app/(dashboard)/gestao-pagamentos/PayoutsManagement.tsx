@@ -217,7 +217,7 @@ export function PayoutsManagement() {
           {item.status === "pending" ? (
             <Button
               variant="success"
-              outline
+              circle
               loading={actionLoading === item.id}
               style={{
                 minHeight: "unset",
@@ -232,7 +232,7 @@ export function PayoutsManagement() {
           ) : item.status === "paid" ? (
             <Button
               variant="warning"
-              outline
+              circle
               loading={actionLoading === item.id}
               style={{
                 minHeight: "unset",
@@ -249,7 +249,7 @@ export function PayoutsManagement() {
 
           <Button
             variant="danger"
-            outline
+            circle
             loading={actionLoading === item.id}
             style={{
               minHeight: "unset",
@@ -265,7 +265,7 @@ export function PayoutsManagement() {
 
           <Button
             variant="info"
-            outline
+            circle
             style={{
               minHeight: "unset",
               width: "auto",

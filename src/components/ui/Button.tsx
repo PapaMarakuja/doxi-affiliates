@@ -6,23 +6,29 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   loading?: boolean;
   variant?: ButtonVariant;
   outline?: boolean;
+  circle?: boolean;
+  size?: "sm" | "md" | "lg";
 }
 
 export function Button({
   loading = false,
   variant = "primary",
   outline = false,
+  circle = false,
+  size = "md",
   disabled,
   children,
   className = "",
   ...props
 }: ButtonProps) {
-  const variantClass = variant !== "primary" ? `ui-button--${variant}` : "";
+  const variantClass = (variant !== "primary" || circle) ? `ui-button--${variant}` : "";
   const outlineClass = outline ? "ui-button--outline" : "";
+  const circleClass = circle ? "ui-button--circle" : "";
+  const sizeClass = circle ? `ui-button--${size}` : "";
 
   return (
     <button
-      className={`ui-button ${variantClass} ${outlineClass} ${className}`}
+      className={`ui-button ${variantClass} ${outlineClass} ${circleClass} ${sizeClass} ${className}`}
       disabled={disabled || loading}
       {...props}
     >
@@ -35,10 +41,10 @@ export function Button({
           borderTopColor: "currentColor",
           borderRadius: "50%",
           animation: "spin 1s infinite linear",
-          marginRight: "8px"
+          marginRight: circle ? "0" : "8px"
         }} />
       ) : null}
-      {children}
+      {(!loading || !circle) && children}
     </button>
   );
 }

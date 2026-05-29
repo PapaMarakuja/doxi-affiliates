@@ -92,7 +92,6 @@ export async function GET(request: Request) {
     const lastPayout = (payouts || []).find(p => p.status === 'paid') || null;
 
     // Pegar chaves PIX
-    // @ts-ignore - pix_key is not strongly typed yet in affiliate type
     const pixKey = affiliate.pix_key || "";
 
     return Response.json({

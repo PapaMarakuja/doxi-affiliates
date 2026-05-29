@@ -29,6 +29,42 @@ interface SalesStats {
   totalConversions: number;
 }
 
+const getCommissionStatusBadge = (isLiberated: boolean, status: string) => {
+  if (status === "refunded") {
+    return {
+      text: "Reembolsado",
+      bg: "rgba(59, 130, 246, 0.12)",
+      color: "var(--info, #3b82f6)",
+    };
+  }
+  if (status === "voided") {
+    return {
+      text: "Cancelado",
+      bg: "rgba(239, 68, 68, 0.12)",
+      color: "var(--error, #ef4444)",
+    };
+  }
+  if (status !== "paid") {
+    return {
+      text: "Aguardando Pagamento",
+      bg: "rgba(107, 124, 141, 0.12)",
+      color: "var(--text-muted, #6B7C8D)",
+    };
+  }
+  if (!isLiberated) {
+    return {
+      text: "A Liberar",
+      bg: "rgba(245, 158, 11, 0.12)",
+      color: "var(--warning, #f59e0b)",
+    };
+  }
+  return {
+    text: "Liberado",
+    bg: "rgba(34, 197, 94, 0.12)",
+    color: "var(--success, #22c55e)",
+  };
+};
+
 export default function MinhasVendasPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [stats, setStats] = useState<SalesStats>({
@@ -145,6 +181,36 @@ export default function MinhasVendasPage() {
             }}>
               +{totalItems - 1} item(s)
             </span>
+          </span>
+        );
+      }
+    },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      render: (item) => {
+        const badge = getCommissionStatusBadge(item.isLiberated, item.status);
+        return (
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "4px 10px",
+            borderRadius: "100px",
+            fontSize: "12px",
+            fontWeight: 600,
+            backgroundColor: badge.bg,
+            color: badge.color,
+            width: "fit-content"
+          }}>
+            <span style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              backgroundColor: badge.color
+            }} />
+            {badge.text}
           </span>
         );
       }
@@ -317,9 +383,45 @@ export default function MinhasVendasPage() {
       >
         {selectedSale && (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ padding: "16px", background: "var(--hover)", borderRadius: "8px" }}>
-              <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>ID do Pedido</p>
-              <p style={{ margin: 0, fontWeight: 600 }}>#DX-{selectedSale.id}</p>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+              gap: "16px"
+            }}>
+              <div style={{ padding: "16px", background: "var(--hover)", borderRadius: "8px" }}>
+                <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>ID do Pedido</p>
+                <p style={{ margin: 0, fontWeight: 600 }}>#DX-{selectedSale.id}</p>
+              </div>
+              <div style={{ padding: "16px", background: "var(--hover)", borderRadius: "8px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>Status da Comissão</p>
+                <div style={{ marginTop: "4px" }}>
+                  {(() => {
+                    const badge = getCommissionStatusBadge(selectedSale.isLiberated, selectedSale.status);
+                    return (
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "4px 10px",
+                        borderRadius: "100px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        backgroundColor: badge.bg,
+                        color: badge.color,
+                        width: "fit-content"
+                      }}>
+                        <span style={{
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          backgroundColor: badge.color
+                        }} />
+                        {badge.text}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
 
             <h4 style={{ margin: "8px 0 0 0", fontSize: "16px" }}>Itens Comprados</h4>
