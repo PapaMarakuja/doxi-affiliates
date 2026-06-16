@@ -1,8 +1,20 @@
 import { getAuthenticatedAffiliate } from "@/src/lib/auth/session";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
-import { getAffiliateDataStartDate } from "@/src/lib/utils";
+import { getAffiliateDataStartDate, calculateOrderCommission } from "@/src/lib/utils";
 
-export async function GET(request: Request) {
+/**
+ * GET /api/payouts
+ *
+ * Retorna o resumo financeiro e o histórico de pagamentos do afiliado logado.
+ *
+ * Regras idênticas ao PayoutService (lado admin):
+ *  - Orders filtradas por affiliate_id + financial_status = "paid" + desde registrationStart
+ *  - BCC calculado via calculateOrderCommission (centralizado)
+ *  - Conquistas (affiliate_achievements) somadas ao total ganho
+ *  - Deduções: payouts com status "paid" ou "pending" (não cancelados)
+ *  - availableToWithdraw = totalEarned - alreadyPaidOrPending
+ */
+export async function GET() {
   const { data: affiliate, error: authError } = await getAuthenticatedAffiliate();
 
   if (authError || !affiliate) {
@@ -11,99 +23,78 @@ export async function GET(request: Request) {
 
   try {
     const supabase = await createSupabaseServerClient();
-    const affiliateDataStartDate = getAffiliateDataStartDate(affiliate.created_at);
 
-    // Buscar os IDs dos cupons do afiliado
-    const { data: coupons } = await supabase
-      .from("coupons")
-      .select("id")
-      .eq("affiliate_id", affiliate.id);
+    const rate = affiliate.commission_rate ?? 0;
+    const registrationStart = getAffiliateDataStartDate(affiliate.created_at) || new Date(0).toISOString();
 
-    const couponIds = coupons?.map((c) => c.id) || [];
-
-    let totalCommissions = 0;
-    let pendingCommissions = 0;
-
-    if (couponIds.length > 0) {
-      let ordersQuery = supabase
+    // Buscar orders, conquistas e payouts em paralelo — mesma lógica do PayoutService
+    const [
+      { data: orders },
+      { data: achievements },
+      { data: payouts },
+    ] = await Promise.all([
+      supabase
         .from("orders")
-        .select(`
-          created_at,
-          financial_status,
-          total_amount,
-          total_discounts,
-          shipping_cost
-        `)
-        .in("coupon_id", couponIds);
+        .select("total_amount, total_discounts, shipping_cost, created_at, financial_status")
+        .eq("affiliate_id", affiliate.id)
+        .eq("financial_status", "paid")
+        .gte("created_at", registrationStart),
+      supabase
+        .from("affiliate_achievements")
+        .select("*, achievement_definitions(*)")
+        .eq("affiliate_id", affiliate.id)
+        .gte("unlocked_at", registrationStart),
+      supabase
+        .from("payouts")
+        .select("*")
+        .eq("affiliate_id", affiliate.id)
+        .not("status", "eq", "cancelled")
+        .order("created_at", { ascending: false }),
+    ]);
 
-      if (affiliateDataStartDate) {
-        ordersQuery = ordersQuery.gte("created_at", affiliateDataStartDate);
+    // Comissão base — usa a mesma função centralizada do PayoutService
+    let baseCommission = 0;
+    (orders || []).forEach((o) => {
+      baseCommission += calculateOrderCommission(o, rate);
+    });
+
+    // Comissão de conquistas
+    let achievementsCommission = 0;
+    (achievements || []).forEach((a) => {
+      if (a.achievement_definitions) {
+        achievementsCommission += Number(a.achievement_definitions.reward_value || 0);
       }
+    });
 
-      const { data: ordersData, error: ordersError } = await ordersQuery;
+    const totalEarned = baseCommission + achievementsCommission;
 
-      if (ordersError) throw ordersError;
+    // Já pago ou em processamento (pending) — mesmo critério do PayoutService
+    const alreadyPaidOrPending = (payouts || [])
+      .filter((p) => p.status === "paid" || p.status === "pending")
+      .reduce((sum, p) => sum + Number(p.amount), 0);
 
-      const rate = affiliate.commission_rate ?? 0;
-      const now = new Date();
+    const availableToWithdraw = Math.max(0, totalEarned - alreadyPaidOrPending);
 
-      (ordersData || []).forEach((o: any) => {
-        const base = o.total_amount - (o.total_discounts ?? 0) - (o.shipping_cost ?? 0);
-        let commission = 0;
-        if (base > 0 && rate > 0) {
-          commission = base * (rate / 100);
-        }
+    const totalPaid = (payouts || [])
+      .filter((p) => p.status === "paid")
+      .reduce((sum, p) => sum + Number(p.amount), 0);
 
-        const orderDate = new Date(o.created_at);
-        const daysSinceOrder = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 3600 * 24));
-        const isPaid = o.financial_status === "paid";
-        const isLiberated = isPaid && daysSinceOrder >= 7;
+    const totalProcessing = (payouts || [])
+      .filter((p) => p.status === "pending")
+      .reduce((sum, p) => sum + Number(p.amount), 0);
 
-        if (isPaid) {
-          totalCommissions += commission;
-          if (!isLiberated) {
-            pendingCommissions += commission;
-          }
-        }
-      });
-    }
-
-    // Buscar histórico de pagamentos
-    let payoutsQuery = supabase
-      .from("payouts")
-      .select("*")
-      .eq("affiliate_id", affiliate.id);
-
-    if (affiliateDataStartDate) {
-      payoutsQuery = payoutsQuery.gte("created_at", affiliateDataStartDate);
-    }
-
-    const { data: payouts, error: payoutsError } = await payoutsQuery.order("created_at", { ascending: false });
-
-    if (payoutsError) throw payoutsError;
-
-    // Calcular o que já foi pago ou está em processamento
-    const totalPaid = (payouts || []).filter(p => p.status === 'paid').reduce((acc, p) => acc + Number(p.amount), 0);
-    const totalProcessing = (payouts || []).filter(p => p.status === 'pending').reduce((acc, p) => acc + Number(p.amount), 0);
-
-    const liberatedCommissions = totalCommissions - pendingCommissions;
-    const availableToWithdraw = Math.max(0, liberatedCommissions - totalPaid - totalProcessing);
-
-    const lastPayout = (payouts || []).find(p => p.status === 'paid') || null;
-
-    // Pegar chaves PIX
-    const pixKey = affiliate.pix_key || "";
+    const lastPayout = (payouts || []).find((p) => p.status === "paid") || null;
 
     return Response.json({
       data: {
-        totalCommissions: parseFloat(totalCommissions.toFixed(2)),
-        pendingCommissions: parseFloat(pendingCommissions.toFixed(2)),
+        totalCommissions: parseFloat(totalEarned.toFixed(2)),
+        pendingCommissions: parseFloat(achievementsCommission.toFixed(2)), // mantido por compatibilidade de interface
         availableToWithdraw: parseFloat(availableToWithdraw.toFixed(2)),
         totalPaid: parseFloat(totalPaid.toFixed(2)),
         totalProcessing: parseFloat(totalProcessing.toFixed(2)),
         lastPayout,
-        pixKey,
-        payouts: payouts || []
+        pixKey: affiliate.pix_key || "",
+        payouts: payouts || [],
       },
     });
   } catch (err) {

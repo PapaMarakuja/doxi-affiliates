@@ -43,6 +43,21 @@ export class OrderSyncRepository {
     return { rows: (data ?? []) as { id: string; shopify_order_id: string }[], error: null };
   }
 
+  /** Retorna um Set com os shopify_order_ids que já existem no banco. */
+  async getExistingShopifyOrderIds(shopifyOrderIds: string[]): Promise<Set<string>> {
+    if (shopifyOrderIds.length === 0) return new Set();
+
+    const supabase = await createSupabaseServerClient();
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select("shopify_order_id")
+      .in("shopify_order_id", shopifyOrderIds);
+
+    if (error || !data) return new Set();
+    return new Set(data.map((r: { shopify_order_id: string }) => r.shopify_order_id));
+  }
+
   /** Insere ou atualiza customers em lote no banco (upsert por shopify_customer_id). */
   async upsertCustomers(customers: { shopify_customer_id: string; email: string | null; first_name: string | null; last_name: string | null }[]): Promise<{ rows: { id: string; shopify_customer_id: string }[]; error: string | null }> {
     if (customers.length === 0) return { rows: [], error: null };
@@ -62,23 +77,44 @@ export class OrderSyncRepository {
   }
 
   /**
-   * Insere os itens de cada pedido na tabela order_items.
-   * Deleta os itens existentes do order antes de reinserir para garantir
-   * consistência em full syncs (upsert não é trivial sem shopify_line_item_id).
+   * Substitui os itens de cada pedido na tabela order_items.
+   *
+   * O fluxo é: DELETE os itens existentes dos orders afetados → INSERT os novos.
+   * O erro do DELETE é verificado antes do INSERT para evitar acúmulo de
+   * duplicatas a cada re-sync caso o delete falhe silenciosamente.
    */
   async upsertOrderItems(items: OrderItemInsert[]): Promise<{ count: number; error: string | null }> {
     if (items.length === 0) return { count: 0, error: null };
 
     const supabase = await createSupabaseServerClient();
 
-    // Apaga itens existentes para os orders afetados (mantém consistência em re-syncs)
+    // Garante que apenas os order_ids únicos serão limpos.
+    // Processa em lotes para evitar que URLs muito longas gerem "Bad Request"
+    // no Supabase quando há centenas de IDs no .in().
+    const BATCH_SIZE = 100;
     const orderIds = [...new Set(items.map((i) => i.order_id))];
-    await supabase.from("order_items").delete().in("order_id", orderIds);
 
-    const { error } = await supabase.from("order_items").insert(items);
+    for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
+      const batch = orderIds.slice(i, i + BATCH_SIZE);
+      const { error: deleteError } = await supabase
+        .from("order_items")
+        .delete()
+        .in("order_id", batch);
 
-    if (error) {
-      return { count: 0, error: error.message };
+      if (deleteError) {
+        console.error("[OrderSync] Falha ao deletar order_items antigos:", deleteError.message);
+        return { count: 0, error: `delete_failed: ${deleteError.message}` };
+      }
+    }
+
+    // Insere os novos itens também em lotes para evitar payloads gigantes
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      const batch = items.slice(i, i + BATCH_SIZE);
+      const { error: insertError } = await supabase.from("order_items").insert(batch);
+
+      if (insertError) {
+        return { count: 0, error: insertError.message };
+      }
     }
 
     return { count: items.length, error: null };
@@ -211,17 +247,23 @@ export class OrderSyncRepository {
   /** Atualiza (ou cria) o registro de sync_state após uma sincronização. */
   async updateSyncState(
     status: string,
-    syncedByUserId?: string
+    syncedByUserId?: string,
+    updateLastSyncedAt: boolean = true
   ): Promise<void> {
     const supabase = await createSupabaseServerClient();
 
+    const payload: Record<string, unknown> = {
+      source: "shopify",
+      synced_by_user_id: syncedByUserId ?? null,
+      shopify_api_response_status: status,
+    };
+
+    if (updateLastSyncedAt) {
+      payload.last_synced_at = new Date().toISOString();
+    }
+
     await supabase.from("sync_state").upsert(
-      {
-        source: "shopify",
-        last_synced_at: new Date().toISOString(),
-        synced_by_user_id: syncedByUserId ?? null,
-        shopify_api_response_status: status,
-      },
+      payload,
       { onConflict: "source" }
     );
   }

@@ -21,8 +21,9 @@ import {
   faDollar,
   faListAlt,
   faLayerGroup,
+  faCopy,
 } from "@fortawesome/free-solid-svg-icons";
-import { formatCurrency, formatDate } from "@/src/lib/utils";
+import { formatCurrency, formatDate, copyToClipboard } from "@/src/lib/utils";
 import { Payout, PayoutSummary } from "@/src/types/payout";
 import { PayoutCreateModal } from "./PayoutCreateModal";
 import { useConfirmDialog } from "@/src/contexts/ConfirmDialogContext";
@@ -38,7 +39,12 @@ export function PayoutsManagement() {
   const [statusFilter, setStatusFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [ordersModalAffiliate, setOrdersModalAffiliate] = useState<{ id: string; name: string } | null>(null);
+  const [ordersModalAffiliate, setOrdersModalAffiliate] = useState<{
+    id: string;
+    name: string;
+    periodStart: string | null;
+    periodEnd: string | null;
+  } | null>(null);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const { addToast } = useToast();
   const confirm = useConfirmDialog();
@@ -50,12 +56,17 @@ export function PayoutsManagement() {
       if (statusFilter) params.append("status", statusFilter);
 
       const res = await fetch(`/api/admin/payouts?${params.toString()}`);
-      const result = await (res.headers.get("content-type")?.includes("application/json") ? res.json() : null);
+      const result = await (res.headers.get("content-type")?.includes("application/json")
+        ? res.json()
+        : null);
 
       if (res.ok) {
         setPayouts(result?.data || []);
       } else {
-        addToast({ message: result?.error || `Erro ${res.status} ao carregar pagamentos`, type: "error" });
+        addToast({
+          message: result?.error || `Erro ${res.status} ao carregar pagamentos`,
+          type: "error",
+        });
       }
     } catch (err: any) {
       console.error("[PayoutsManagement] fetchPayouts error:", err);
@@ -69,7 +80,9 @@ export function PayoutsManagement() {
     setLoadingSummary(true);
     try {
       const res = await fetch("/api/admin/payouts/summary");
-      const result = await (res.headers.get("content-type")?.includes("application/json") ? res.json() : null);
+      const result = await (res.headers.get("content-type")?.includes("application/json")
+        ? res.json()
+        : null);
 
       if (res.ok) {
         setSummary(result?.data);
@@ -94,25 +107,38 @@ export function PayoutsManagement() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      const result = await (res.headers.get("content-type")?.includes("application/json") ? res.json() : null);
+      const result = await (res.headers.get("content-type")?.includes("application/json")
+        ? res.json()
+        : null);
       if (res.ok) {
-        addToast({ message: status === "paid" ? "Pagamento registrado com sucesso" : "Pagamento revertido para pendente", type: "success" });
+        addToast({
+          message:
+            status === "paid"
+              ? "Pagamento registrado com sucesso"
+              : "Pagamento revertido para pendente",
+          type: "success",
+        });
 
         // Update local state instead of refetching
-        setPayouts(prev => prev.map(p => {
-          if (p.id === id) {
-            return {
-              ...p,
-              status,
-              paid_at: status === "paid" ? new Date().toISOString() : null
-            };
-          }
-          return p;
-        }));
+        setPayouts((prev) =>
+          prev.map((p) => {
+            if (p.id === id) {
+              return {
+                ...p,
+                status,
+                paid_at: status === "paid" ? new Date().toISOString() : null,
+              };
+            }
+            return p;
+          })
+        );
 
         fetchSummary(); // Summary still needs to be updated
       } else {
-        addToast({ message: result?.error || "Erro ao atualizar pagamento", type: "error" });
+        addToast({
+          message: result?.error || "Erro ao atualizar pagamento",
+          type: "error",
+        });
       }
     } catch (err) {
       console.error("[PayoutsManagement] handleUpdateStatus error:", err);
@@ -125,10 +151,11 @@ export function PayoutsManagement() {
   const handleDeletePayout = async (id: string) => {
     const confirmed = await confirm({
       title: "Excluir Pagamento",
-      message: "Tem certeza que deseja excluir este registro de pagamento? Esta ação não pode ser desfeita.",
+      message:
+        "Tem certeza que deseja excluir este registro de pagamento? Esta ação não pode ser desfeita.",
       confirmText: "Excluir",
       cancelText: "Cancelar",
-      type: "danger"
+      type: "danger",
     });
 
     if (!confirmed) return;
@@ -136,14 +163,19 @@ export function PayoutsManagement() {
     setActionLoading(id);
     try {
       const res = await fetch(`/api/admin/payouts/${id}`, { method: "DELETE" });
-      const result = await (res.headers.get("content-type")?.includes("application/json") ? res.json() : null);
+      const result = await (res.headers.get("content-type")?.includes("application/json")
+        ? res.json()
+        : null);
 
       if (res.ok) {
         addToast({ message: "Pagamento excluído com sucesso", type: "success" });
-        setPayouts(prev => prev.filter(p => p.id !== id));
+        setPayouts((prev) => prev.filter((p) => p.id !== id));
         fetchSummary();
       } else {
-        addToast({ message: result?.error || "Erro ao excluir pagamento", type: "error" });
+        addToast({
+          message: result?.error || "Erro ao excluir pagamento",
+          type: "error",
+        });
       }
     } catch (err) {
       console.error("[PayoutsManagement] handleDeletePayout error:", err);
@@ -153,10 +185,20 @@ export function PayoutsManagement() {
     }
   };
 
-  const filteredPayouts = payouts.filter(p =>
-    (p as any).affiliates?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.pix_key?.toLowerCase().includes(search.toLowerCase())
+  const filteredPayouts = payouts.filter(
+    (p) =>
+      (p as any).affiliates?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.pix_key?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleCopyPixKey = async (pixKey: string) => {
+    if (!pixKey || pixKey.toLowerCase() === "não cadastrada" || pixKey.toLowerCase() === "nao cadastrada") return;
+    await copyToClipboard(
+      pixKey,
+      () => addToast({ message: "Chave PIX copiada com sucesso!", type: "success" }),
+      () => addToast({ message: "Erro ao copiar chave PIX", type: "error" })
+    );
+  };
 
   const columns: Column<Payout>[] = [
     {
@@ -164,66 +206,138 @@ export function PayoutsManagement() {
       header: "Afiliado",
       render: (item: any) => (
         <div>
-          <div style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.affiliates?.name || "Desconhecido"}</div>
-          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>PIX: {item.pix_key}</div>
+          <div style={{ fontWeight: 600, color: "var(--text-main)" }}>
+            {item.affiliates?.name || "Desconhecido"}
+          </div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "var(--text-muted)",
+              marginTop: "2px",
+              display: "flex",
+              cursor: "pointer",
+              alignItems: "center",
+              gap: "6px",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopyPixKey(item.pix_key);
+            }}
+          >
+            PIX: {item.pix_key}
+            {item.pix_key && item.pix_key.toLowerCase() !== "não cadastrada" && item.pix_key.toLowerCase() !== "nao cadastrada" && (
+              <button
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                title="Copiar chave PIX"
+              >
+                <FontAwesomeIcon icon={faCopy} style={{ fontSize: "12px" }} />
+              </button>
+            )}
+
+          </div>
         </div>
-      )
+      ),
     },
     {
       key: "amount",
       header: "Valor",
       sortable: true,
-      render: (item) => <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{formatCurrency(item.amount)}</span>
+      render: (item) => (
+        <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
+          {formatCurrency(item.amount)}
+        </span>
+      ),
     },
     {
       key: "status",
       header: "Status",
       render: (item) => {
         const styles: Record<string, any> = {
-          paid: { bg: "rgba(34,197,94,0.12)", color: "var(--success)", label: "Pago", icon: faCheckCircle },
-          pending: { bg: "rgba(245,158,11,0.10)", color: "var(--warning)", label: "Pendente", icon: faClock },
-          cancelled: { bg: "rgba(239,68,68,0.10)", color: "var(--error)", label: "Cancelado", icon: faTimesCircle },
+          paid: {
+            bg: "rgba(34,197,94,0.12)",
+            color: "var(--success)",
+            label: "Pago",
+            icon: faCheckCircle,
+          },
+          pending: {
+            bg: "rgba(245,158,11,0.10)",
+            color: "var(--warning)",
+            label: "Pendente",
+            icon: faClock,
+          },
+          cancelled: {
+            bg: "rgba(239,68,68,0.10)",
+            color: "var(--error)",
+            label: "Cancelado",
+            icon: faTimesCircle,
+          },
         };
         const style = styles[item.status || "pending"];
         return (
-          <span style={{
-            padding: "4px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: 600,
-            background: style.bg, color: style.color, display: "inline-flex", alignItems: "center", gap: "6px"
-          }}>
+          <span
+            style={{
+              padding: "4px 10px",
+              borderRadius: "12px",
+              fontSize: "12px",
+              fontWeight: 600,
+              background: style.bg,
+              color: style.color,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
             <FontAwesomeIcon icon={style.icon} style={{ fontSize: "11px" }} />
             {style.label}
           </span>
         );
-      }
+      },
     },
     {
       key: "created_at",
       header: "Solicitado em",
       sortable: true,
-      render: (item) => <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{item.created_at ? formatDate(item.created_at, true) : "-"}</span>
+      render: (item) => (
+        <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>
+          {item.created_at ? formatDate(item.created_at, true) : "-"}
+        </span>
+      ),
     },
     {
       key: "paid_at",
       header: "Pago em",
       sortable: true,
-      render: (item) => <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>{item.paid_at ? formatDate(item.paid_at, true) : "-"}</span>
+      render: (item) => (
+        <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>
+          {item.paid_at ? formatDate(item.paid_at, true) : "-"}
+        </span>
+      ),
     },
     {
       key: "actions",
       header: "Ações",
       style: { width: "1%" },
       render: (item) => (
-        <div className="flex justify-center items-center gap-2">
+        <div className="flex justify-center items-center gap-1">
           {item.status === "pending" ? (
             <Button
               variant="success"
               circle
               loading={actionLoading === item.id}
               style={{
-                minHeight: "unset",
-                width: "auto",
+                minHeight: "32px",
+                minWidth: "32px",
+                width: "32px",
+                height: "32px",
                 fontSize: "12px",
-                padding: '0.5rem',
+                padding: "0",
               }}
               onClick={() => handleUpdateStatus(item.id, "paid")}
             >
@@ -235,10 +349,12 @@ export function PayoutsManagement() {
               circle
               loading={actionLoading === item.id}
               style={{
-                minHeight: "unset",
-                width: "auto",
+                minHeight: "32px",
+                minWidth: "32px",
+                width: "32px",
+                height: "32px",
                 fontSize: "12px",
-                padding: '0.5rem',
+                padding: "0",
               }}
               onClick={() => handleUpdateStatus(item.id, "pending")}
               title="Reverter para pendente"
@@ -252,10 +368,12 @@ export function PayoutsManagement() {
             circle
             loading={actionLoading === item.id}
             style={{
-              minHeight: "unset",
-              width: "auto",
+              minHeight: "32px",
+              minWidth: "32px",
+              width: "32px",
+              height: "32px",
               fontSize: "12px",
-              padding: '0.5rem',
+              padding: "0",
             }}
             onClick={() => handleDeletePayout(item.id)}
             title="Excluir pagamento"
@@ -267,22 +385,46 @@ export function PayoutsManagement() {
             variant="info"
             circle
             style={{
-              minHeight: "unset",
-              width: "auto",
+              minHeight: "32px",
+              minWidth: "32px",
+              width: "32px",
+              height: "32px",
               fontSize: "12px",
-              padding: '0.5rem',
+              padding: "0",
             }}
-            onClick={() => setOrdersModalAffiliate({
-              id: (item as any).affiliates?.id || item.affiliate_id || "",
-              name: (item as any).affiliates?.name || "Afiliado"
-            })}
+            onClick={() => {
+              const affiliateId = (item as any).affiliates?.id || item.affiliate_id || "";
+
+              // periodStart: paid_at do último payout PAGO deste afiliado antes do atual
+              const prevPaidPayouts = payouts.filter(
+                (p) =>
+                  p.affiliate_id === affiliateId &&
+                  p.status === "paid" &&
+                  p.id !== item.id
+              );
+              const lastPaid = prevPaidPayouts.sort(
+                (a, b) =>
+                  new Date(b.paid_at ?? b.created_at ?? 0).getTime() -
+                  new Date(a.paid_at ?? a.created_at ?? 0).getTime()
+              )[0];
+
+              // periodEnd: se o item já foi pago, usa paid_at; se pendente, sem limite
+              const periodEnd = item.status === "paid" && item.paid_at ? item.paid_at : null;
+
+              setOrdersModalAffiliate({
+                id: affiliateId,
+                name: (item as any).affiliates?.name || "Afiliado",
+                periodStart: lastPaid?.paid_at ?? lastPaid?.created_at ?? null,
+                periodEnd,
+              });
+            }}
             title="Ver vendas"
           >
             <FontAwesomeIcon icon={faListAlt} />
           </Button>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
@@ -290,10 +432,17 @@ export function PayoutsManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="page-title">Gestão de Pagamentos</h2>
-          <p className="page-subtitle">Acompanhe e realize pagamentos para seus afiliados.</p>
+          <p className="page-subtitle">
+            Acompanhe e realize pagamentos para seus afiliados.
+          </p>
         </div>
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <Button onClick={() => setIsBatchModalOpen(true)} style={{ width: "auto" }} variant="info" outline>
+          <Button
+            onClick={() => setIsBatchModalOpen(true)}
+            style={{ width: "auto" }}
+            variant="info"
+            outline
+          >
             <FontAwesomeIcon icon={faLayerGroup} style={{ marginRight: "8px" }} />
             Gerar Todos
           </Button>
@@ -305,48 +454,124 @@ export function PayoutsManagement() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(34,197,94,0.12)", color: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+        <Card
+          style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}
+        >
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              background: "rgba(34,197,94,0.12)",
+              color: "var(--success)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+            }}
+          >
             <FontAwesomeIcon icon={faCheckCircle} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>Total Pago</p>
+            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+              Total Pago
+            </p>
             <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
-              {loadingSummary ? <Skeleton width="100px" height="24px" /> : formatCurrency(summary?.total_paid || 0)}
+              {loadingSummary ? (
+                <Skeleton width="100px" height="24px" />
+              ) : (
+                formatCurrency(summary?.total_paid || 0)
+              )}
             </h3>
           </div>
         </Card>
 
-        <Card style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(245,158,11,0.10)", color: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+        <Card
+          style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}
+        >
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              background: "rgba(245,158,11,0.10)",
+              color: "var(--warning)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+            }}
+          >
             <FontAwesomeIcon icon={faClock} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>Pagamentos Pendentes</p>
+            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+              Pagamentos Pendentes
+            </p>
             <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
-              {loadingSummary ? <Skeleton width="100px" height="24px" /> : formatCurrency(summary?.total_pending || 0)}
+              {loadingSummary ? (
+                <Skeleton width="100px" height="24px" />
+              ) : (
+                formatCurrency(summary?.total_pending || 0)
+              )}
             </h3>
           </div>
         </Card>
 
-        <Card style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(59,130,246,0.10)", color: "var(--info)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+        <Card
+          style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}
+        >
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              background: "rgba(59,130,246,0.10)",
+              color: "var(--info)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+            }}
+          >
             <FontAwesomeIcon icon={faHandHoldingDollar} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>Total a Pagar (Geral)</p>
+            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+              Total a Pagar (Geral)
+            </p>
             <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
-              {loadingSummary ? <Skeleton width="100px" height="24px" /> : formatCurrency(summary?.pending_commission || 0)}
+              {loadingSummary ? (
+                <Skeleton width="100px" height="24px" />
+              ) : (
+                formatCurrency(summary?.pending_commission || 0)
+              )}
             </h3>
           </div>
         </Card>
 
-        <Card style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(236, 72, 153, 0.1)", color: "var(--pink-dark)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+        <Card
+          style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}
+        >
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              background: "rgba(236, 72, 153, 0.1)",
+              color: "var(--pink-dark)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+            }}
+          >
             <FontAwesomeIcon icon={faMoneyBillWave} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>Pagamentos Gerados</p>
+            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+              Pagamentos Gerados
+            </p>
             <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
               {loadingSummary ? <Skeleton width="40px" height="24px" /> : payouts.length}
             </h3>
@@ -355,7 +580,15 @@ export function PayoutsManagement() {
       </div>
 
       <Card style={{ padding: "20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "20px", marginBottom: "20px", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "20px",
+            marginBottom: "20px",
+            flexWrap: "wrap",
+          }}
+        >
           <div style={{ display: "flex", gap: "12px", flex: 1, minWidth: "300px" }}>
             <Input
               placeholder="Buscar por afiliado ou PIX..."
@@ -367,8 +600,20 @@ export function PayoutsManagement() {
           </div>
 
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <span style={{ fontSize: "14px", color: "var(--text-muted)", fontWeight: 500 }}>Filtrar Status:</span>
-            <div style={{ display: "flex", background: "var(--sidebar-hover)", padding: "4px", borderRadius: "8px", gap: "4px" }}>
+            <span
+              style={{ fontSize: "14px", color: "var(--text-muted)", fontWeight: 500 }}
+            >
+              Filtrar Status:
+            </span>
+            <div
+              style={{
+                display: "flex",
+                background: "var(--sidebar-hover)",
+                padding: "4px",
+                borderRadius: "8px",
+                gap: "4px",
+              }}
+            >
               {["", "pending", "paid"].map((status) => (
                 <button
                   key={status}
@@ -377,12 +622,14 @@ export function PayoutsManagement() {
                     padding: "6px 12px",
                     borderRadius: "6px",
                     border: "none",
-                    background: statusFilter === status ? "var(--card-bg)" : "transparent",
-                    color: statusFilter === status ? "var(--text-main)" : "var(--text-muted)",
+                    background:
+                      statusFilter === status ? "var(--card-bg)" : "transparent",
+                    color:
+                      statusFilter === status ? "var(--text-main)" : "var(--text-muted)",
                     fontSize: "12px",
                     fontWeight: 600,
                     cursor: "pointer",
-                    transition: "all 0.2s"
+                    transition: "all 0.2s",
                   }}
                 >
                   {status === "" ? "Todos" : status === "pending" ? "Pendentes" : "Pagos"}
@@ -409,6 +656,8 @@ export function PayoutsManagement() {
         onClose={() => setOrdersModalAffiliate(null)}
         affiliateId={ordersModalAffiliate?.id || ""}
         affiliateName={ordersModalAffiliate?.name}
+        periodStart={ordersModalAffiliate?.periodStart}
+        periodEnd={ordersModalAffiliate?.periodEnd}
       />
 
       <BatchPayoutModal

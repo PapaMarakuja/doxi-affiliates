@@ -10,6 +10,7 @@ export function returnRole(role: "admin" | "affiliate") {
 }
 
 export function getAffiliateDataStartDate(affiliateCreatedAt: string | null | undefined): string | null {
+  return "2026-04-01T03:00:00.000Z";
   if (!affiliateCreatedAt) return null;
   const createdAt = new Date(affiliateCreatedAt);
   if (Number.isNaN(createdAt.getTime())) return null;
@@ -47,4 +48,27 @@ export function calculateOrderCommission(order: OrderForCommission, rate: number
   const bcc = order.total_amount - (order.shipping_cost || 0) - (order.total_discounts || 0);
   if (bcc <= 0 || rate <= 0) return 0;
   return bcc * (rate / 100);
+}
+
+export async function copyToClipboard(text: string, onSuccess?: () => void, onError?: (err: unknown) => void) {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (onSuccess) onSuccess();
+  } catch (err) {
+    console.error("[copyToClipboard] error copying text:", err);
+    if (onError) onError(err);
+  }
+}
+
+export function scrollToElement(target: Element | null | undefined, options?: ScrollIntoViewOptions): void {
+  if (!target) return;
+  try {
+    target.scrollIntoView({
+      behavior: options?.behavior ?? "smooth",
+      block: options?.block ?? "start",
+      inline: options?.inline ?? "nearest",
+    });
+  } catch {
+    target.scrollIntoView();
+  }
 }

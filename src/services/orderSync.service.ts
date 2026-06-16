@@ -4,14 +4,13 @@ import type { OrderItemInsert } from "@/src/repositories/orderSync.repository";
 import type { Orders, DashboardData, ShopifyOrder, Coupon } from "@/src/types";
 import { getAffiliateDataStartDate } from "@/src/lib/utils";
 
-const SYNC_COOLDOWN_MS = 60 * 60 * 1000; // 1 hora
-
 /**
  * Service responsável pela sincronia de orders da Shopify e montagem
  * dos dados do dashboard.
  *
- * - Admin  → busca TODAS as orders da loja (sem filtro de cupom)
- * - Affiliate → busca apenas orders com seus cupons
+ * - Admin  → busca TODAS as orders da loja (sem filtro de data), faz upsert.
+ * - Afiliado → busca apenas orders que usaram seus cupons (sem filtro de data), faz upsert.
+ * - syncResult → diferencia pedidos novos de atualizados.
  */
 export class OrderSyncService {
   private readonly shopify: ShopifyService;
@@ -22,50 +21,25 @@ export class OrderSyncService {
     this.repo = new OrderSyncRepository();
   }
 
-  private async getSyncCooldownState(): Promise<{
-    lastSyncedAt: string | null;
-    remainingSeconds: number;
-  }> {
-    const syncState = await this.repo.getSyncState();
-    const lastSyncedAt = syncState?.last_synced_at ?? null;
-
-    if (!lastSyncedAt) {
-      return { lastSyncedAt: null, remainingSeconds: 0 };
-    }
-
-    const lastSyncedMs = new Date(lastSyncedAt).getTime();
-    if (Number.isNaN(lastSyncedMs)) {
-      return { lastSyncedAt: null, remainingSeconds: 0 };
-    }
-
-    const expiresAt = lastSyncedMs + SYNC_COOLDOWN_MS;
-    const remainingSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
-
-    return { lastSyncedAt, remainingSeconds };
-  }
-
   // ──────────────────────────────────────────────
   // 1. BUSCAR na Shopify
   // ──────────────────────────────────────────────
 
+  /**
+   * Admin → busca TODAS as orders (getAllOrders sem sinceDate).
+   * Afiliado → busca apenas as orders com seus cupons (getOrdersByDiscountCodes sem sinceDate).
+   */
   private async fetchOrdersFromShopify(
     role: "admin" | "affiliate",
-    coupons: Coupon[],
-    ignoreSinceDate: boolean = false
+    coupons: Coupon[]
   ): Promise<{ orders: ShopifyOrder[]; apiStatus: string }> {
-    const syncState = ignoreSinceDate ? null : await this.repo.getSyncState();
-    const sinceDate = syncState?.last_synced_at ?? undefined;
-
     try {
       let orders: ShopifyOrder[];
 
       if (role === "admin") {
-        orders = await this.shopify.getAllOrders(sinceDate);
+        orders = await this.shopify.getAllOrders();
       } else {
-        if (coupons.length === 0) {
-          return { orders: [], apiStatus: "skipped_no_coupons" };
-        }
-        orders = await this.shopify.getOrdersByDiscountCodes(coupons, sinceDate);
+        orders = await this.shopify.getOrdersByDiscountCodes(coupons);
       }
 
       return { orders, apiStatus: "success" };
@@ -123,9 +97,8 @@ export class OrderSyncService {
       // Map Shopify financial_status to DB enum ("paid" | "refunded" | "processing" | "unpaid")
       let mappedStatus: Orders["financial_status"] = "unpaid";
       const sfStatus = shopifyOrder.financial_status?.toLowerCase();
-      
+
       if (shopifyOrder.cancelled_at) {
-        // If cancelled, it's refunded (if it was paid or already refunded) or just unpaid.
         mappedStatus = (sfStatus === "paid" || sfStatus === "refunded" || sfStatus === "partially_refunded") ? "refunded" : "unpaid";
       } else if (sfStatus === "paid") {
         mappedStatus = "paid";
@@ -134,7 +107,7 @@ export class OrderSyncService {
       } else if (sfStatus === "authorized" || sfStatus === "partially_paid") {
         mappedStatus = "processing";
       } else {
-        mappedStatus = "unpaid"; // catches "pending" and anything else
+        mappedStatus = "unpaid";
       }
 
       return {
@@ -185,15 +158,26 @@ export class OrderSyncService {
     return items;
   }
 
+  /**
+   * Verifica quais shopify_order_ids já existem no banco para distinguir
+   * pedidos novos de atualizados no resultado do sync.
+   */
+  private async getExistingOrderIds(
+    shopifyOrderIds: string[]
+  ): Promise<Set<string>> {
+    if (shopifyOrderIds.length === 0) return new Set();
+    return this.repo.getExistingShopifyOrderIds(shopifyOrderIds);
+  }
+
   private async populateOrders(
     shopifyOrders: ShopifyOrder[],
     coupons: Coupon[],
     apiStatus: string,
     syncedByUserId?: string
-  ): Promise<{ synced: number; error: string | null }> {
+  ): Promise<{ newOrders: number; updatedOrders: number; error: string | null }> {
     if (shopifyOrders.length === 0) {
-      await this.repo.updateSyncState(apiStatus, syncedByUserId);
-      return { synced: 0, error: null };
+      await this.repo.updateSyncState(apiStatus, syncedByUserId, apiStatus === "success");
+      return { newOrders: 0, updatedOrders: 0, error: null };
     }
 
     // Mapa code → coupon_id
@@ -208,8 +192,12 @@ export class OrderSyncService {
         .map((c) => [c.code.toUpperCase(), c.affiliate_id!])
     );
 
-    // 1. Upsert Customers primeiro para garantir que existam para o relacionamento
-    const uniqueCustomers = new Map<string, any>();
+    // 1. Detectar quais orders já existem no banco (para calcular new vs. updated)
+    const incomingShopifyIds = shopifyOrders.map((o) => String(o.id));
+    const existingIds = await this.getExistingOrderIds(incomingShopifyIds);
+
+    // 2. Upsert Customers primeiro para garantir que existam para o relacionamento
+    const uniqueCustomers = new Map<string, { shopify_customer_id: string; email: string | null; first_name: string | null; last_name: string | null }>();
     shopifyOrders.forEach((o) => {
       if (o.customer) {
         uniqueCustomers.set(String(o.customer.id), {
@@ -243,9 +231,13 @@ export class OrderSyncService {
     const { rows, error: ordersError } = await this.repo.upsertOrders(ordersToUpsert);
 
     if (ordersError) {
-      await this.repo.updateSyncState(apiStatus, syncedByUserId);
-      return { synced: 0, error: ordersError };
+      await this.repo.updateSyncState(apiStatus, syncedByUserId, false);
+      return { newOrders: 0, updatedOrders: 0, error: ordersError };
     }
+
+    // Calcular quantos foram novos vs. atualizados
+    const newOrders = rows.filter((r) => !existingIds.has(r.shopify_order_id)).length;
+    const updatedOrders = rows.filter((r) => existingIds.has(r.shopify_order_id)).length;
 
     // Monta mapa shopify_order_id → db uuid para vincular os itens
     const shopifyIdToDbIdMap = new Map<string, string>(
@@ -260,92 +252,66 @@ export class OrderSyncService {
       console.error("[OrderSync] Erro ao salvar order_items:", itemsError);
     }
 
-    await this.repo.updateSyncState(apiStatus, syncedByUserId);
+    await this.repo.updateSyncState(apiStatus, syncedByUserId, apiStatus === "success" && !itemsError);
 
-    return { synced: rows.length, error: itemsError };
+    return { newOrders, updatedOrders, error: itemsError };
   }
 
   // ──────────────────────────────────────────────
-  // 3. Sync normal (incremental)
+  // 3. Sync (admin ou afiliado)
   // ──────────────────────────────────────────────
 
+  /**
+   * Sync universal:
+   *  - Admin  → busca TODAS as orders da Shopify (sem filtro de data)
+   *  - Afiliado → busca orders que usaram seus cupons (sem filtro de data)
+   *
+   * Sem cooldown — qualquer usuário pode disparar a qualquer momento.
+   */
   async syncAndGetDashboardData(
     role: "admin" | "affiliate",
     userId: string,
     affiliateId?: string
   ): Promise<DashboardData> {
-    const cooldownState = await this.getSyncCooldownState();
+    // Admin precisa de todos os cupons para mapear corretamente coupon_id/affiliate_id em qualquer pedido.
+    // Afiliado usa apenas seus próprios cupons para filtrar a busca na Shopify.
+    const coupons = role === "affiliate" && affiliateId
+      ? await this.repo.getCouponsByAffiliateId(affiliateId)
+      : await this.repo.getAllCoupons();
 
-    if (role === "affiliate" && cooldownState.remainingSeconds > 0) {
-      return this.buildDashboardData(
-        role,
-        affiliateId,
-        {
-          synced: 0,
-          apiStatus: `cooldown_${cooldownState.remainingSeconds}s`,
-          error: null,
-        },
-        cooldownState.lastSyncedAt
-      );
-    }
-
-    // Admin: sempre carrega TODOS os cupons para o mapa de vinculação
-    const coupons =
-      role === "admin"
-        ? await this.repo.getAllCoupons()
-        : await this.repo.getCouponsByAffiliateId(affiliateId!);
-
-    // 1. Buscar na Shopify (incremental — desde last_synced_at)
     const { orders: shopifyOrders, apiStatus } = await this.fetchOrdersFromShopify(role, coupons);
 
-    // 2. Persistir no banco (orders + itens)
-    const { synced, error } = await this.populateOrders(
+    console.log(`[Sync][${role}] ${shopifyOrders.length} orders fetched from Shopify`);
+
+    const { newOrders, updatedOrders, error } = await this.populateOrders(
       shopifyOrders,
       coupons,
       apiStatus,
       userId
     );
 
-    // 3. Montar dados do dashboard
+    console.log(`[Sync][${role}] newOrders: ${newOrders} | updatedOrders: ${updatedOrders} | error: ${error}`);
+
     return this.buildDashboardData(role, affiliateId, {
-      synced,
+      newOrders,
+      updatedOrders,
       apiStatus,
       error,
     });
   }
 
   // ──────────────────────────────────────────────
-  // 4. Full Sync (desde o início — admin only)
+  // 4. Full Sync (desde o início — admin only, mantido por compatibilidade)
   // ──────────────────────────────────────────────
 
   /**
-   * Sync completo: ignora o sinceDate, busca TUDO desde o começo.
-   * Busca todas as orders e faz upsert — atualiza existentes e cria novas.
-   * Apenas admin pode executar.
+   * Alias para o sync de admin — busca tudo sem filtro de data.
+   * Apenas admin pode executar (validação feita na rota).
    */
   async fullSyncAndGetDashboardData(
     userId: string
   ): Promise<DashboardData> {
-    const coupons = await this.repo.getAllCoupons();
-
-    const { orders: shopifyOrders, apiStatus } = await this.fetchOrdersFromShopify("admin", coupons, true);
-
-    console.log(`[Full Sync] ${shopifyOrders.length} orders fetched from Shopify`);
-
-    const { synced, error } = await this.populateOrders(
-      shopifyOrders,
-      coupons,
-      apiStatus,
-      userId
-    );
-
-    console.log("[Full Sync] synced:", synced, "| error:", error);
-
-    return this.buildDashboardData("admin", undefined, {
-      synced,
-      apiStatus,
-      error,
-    });
+    return this.syncAndGetDashboardData("admin", userId, undefined);
   }
 
   // ──────────────────────────────────────────────
@@ -367,12 +333,8 @@ export class OrderSyncService {
     role: "admin" | "affiliate",
     affiliateId: string | undefined,
     syncResult: DashboardData["syncResult"],
-    knownLastSyncedAt?: string | null
   ): Promise<DashboardData> {
-    const lastSyncedAt =
-      knownLastSyncedAt === undefined
-        ? (await this.repo.getSyncState())?.last_synced_at ?? null
-        : knownLastSyncedAt;
+    const lastSyncedAt = (await this.repo.getSyncState())?.last_synced_at ?? null;
 
     const affiliateRows =
       role === "affiliate" ? await this.repo.getAffiliateById(affiliateId!) : [];

@@ -30,9 +30,19 @@ export async function GET(
     }
 
     const rate = affiliate.commission_rate ?? 0;
-    const startDate = getAffiliateDataStartDate(affiliate.created_at) || new Date(0).toISOString();
+    const registrationStart = getAffiliateDataStartDate(affiliate.created_at) || new Date(0).toISOString();
 
-    const { data: orders, error } = await supabase
+    // Aceita filtros opcionais de período via query string
+    const searchParams = request.nextUrl.searchParams;
+    const fromParam = searchParams.get("from");  // início do período (ISO string)
+    const toParam = searchParams.get("to");      // fim do período (ISO string)
+
+    // Se `from` foi fornecido, usa esse início; caso contrário usa início do cadastro
+    const startDate = fromParam ?? registrationStart;
+    // period_start que será devolvido ao cliente para exibir na modal
+    const periodStart = startDate;
+
+    let query = supabase
       .from("orders")
       .select(`
         id,
@@ -51,8 +61,13 @@ export async function GET(
       `)
       .eq("affiliate_id", affiliateId)
       .eq("financial_status", "paid")
-      .gte("created_at", startDate)
-      .order("created_at", { ascending: false });
+      .gte("created_at", startDate);
+
+    if (toParam) {
+      query = query.lte("created_at", toParam);
+    }
+
+    const { data: orders, error } = await query.order("created_at", { ascending: false });
 
     if (error) throw error;
 
@@ -102,7 +117,7 @@ export async function GET(
       data: {
         orders: result,
         commission_rate: rate,
-        period_start: startDate,
+        period_start: periodStart,
       },
     });
   } catch (err: any) {

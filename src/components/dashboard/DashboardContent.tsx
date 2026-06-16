@@ -8,11 +8,9 @@ import {
   faCalendarDay,
   faBagShopping,
   faArrowsRotate,
-  faLock,
   faCircleCheck,
   faChartSimple,
   faCloudArrowDown,
-  faLink,
   faCopy,
   faRocket,
 } from '@fortawesome/free-solid-svg-icons';
@@ -29,7 +27,6 @@ import {
   Cell,
 } from 'recharts';
 import type { DashboardData, Affiliate, Coupon } from '@/src/types';
-import { useConfirmDialog } from '@/src/contexts/ConfirmDialogContext';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useToast } from '@/src/contexts/ToastContext';
 import { Card } from '@/src/components/ui/Card';
@@ -46,8 +43,6 @@ const formatBRL = (value: number) => {
 const formatNumber = (value: number) => {
   return value.toLocaleString('pt-BR');
 };
-
-const SYNC_COOLDOWN_SECONDS = 60 * 60;
 
 const AFFILIATE_VISIBLE_STATS = new Set([
   'coupon-sales',
@@ -120,7 +115,6 @@ const EMPTY_DAILY = [
 export default function DashboardContent() {
   const { addToast } = useToast();
   const [chartMode, setChartMode] = useState<ChartMode>('monthly');
-  const [nowMs, setNowMs] = useState(() => Date.now());
   const [syncing, setSyncing] = useState(false);
   const [fullSyncing, setFullSyncing] = useState(false);
   const [lastSyncSuccess, setLastSyncSuccess] = useState(false);
@@ -128,7 +122,6 @@ export default function DashboardContent() {
   const [dashData, setDashData] = useState<DashboardData | null>(null);
   const [benefitsData, setBenefitsData] = useState<{ affiliate: Affiliate; coupons: Coupon[] } | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-  const confirm = useConfirmDialog();
 
   const fetchBenefits = useCallback(async () => {
     try {
@@ -165,46 +158,10 @@ export default function DashboardContent() {
     loadInitialData();
   }, [fetchBenefits]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNowMs(Date.now());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
   const isAdmin = dashData?.isAdmin ?? false;
-  const lastSyncedAtMs = dashData?.lastSyncedAt
-    ? new Date(dashData.lastSyncedAt).getTime()
-    : null;
-  const cooldown =
-    lastSyncedAtMs && Number.isFinite(lastSyncedAtMs)
-      ? Math.max(
-        0,
-        Math.ceil((lastSyncedAtMs + SYNC_COOLDOWN_SECONDS * 1000 - nowMs) / 1000)
-      )
-      : 0;
-  const inCooldown = cooldown > 0;
-
-  async function shouldProceedWithAdminCooldown() {
-    if (!isAdmin || !inCooldown) return true;
-
-    return confirm({
-      title: 'Sincronização em cooldown',
-      message: `A última sincronização foi recente. Deseja continuar mesmo assim? Tempo restante: ${formatRemainingTime(cooldown)}.`,
-      confirmText: 'Sincronizar mesmo assim',
-      cancelText: 'Cancelar',
-      type: 'warning',
-      allowClickOutside: true,
-    });
-  }
 
   async function handleSync() {
     if (syncing || fullSyncing) return;
-    if (!isAdmin && inCooldown) return;
-
-    const proceed = await shouldProceedWithAdminCooldown();
-    if (!proceed) return;
 
     setSyncing(true);
     setLastSyncSuccess(false);
@@ -228,9 +185,6 @@ export default function DashboardContent() {
   async function handleFullSync() {
     if (fullSyncing || syncing) return;
 
-    const proceed = await shouldProceedWithAdminCooldown();
-    if (!proceed) return;
-
     setFullSyncing(true);
     setLastSyncSuccess(false);
 
@@ -253,9 +207,7 @@ export default function DashboardContent() {
     }
   }
 
-  const canSync = isAdmin
-    ? !syncing && !fullSyncing
-    : !inCooldown && !syncing && !fullSyncing;
+  const canSync = !syncing && !fullSyncing;
 
   // Stats derivados dos dados reais
   const stats = [
@@ -307,6 +259,7 @@ export default function DashboardContent() {
     : stats.filter((stat) => AFFILIATE_VISIBLE_STATS.has(stat.id));
 
   const chartMonthlyData = dashData?.chartMonthly ?? EMPTY_CHART;
+  console.log("🚀 ~ DashboardContent ~ chartMonthlyData:", chartMonthlyData)
   const chartDailyData = dashData?.chartDaily ?? EMPTY_DAILY;
 
   const featuredCoupon = benefitsData?.coupons.find(c => c.active && c.discount_percentage !== null) ||
@@ -551,9 +504,9 @@ export default function DashboardContent() {
               <>
                 <FontAwesomeIcon icon={faCircleCheck} />
                 <span>
-                  Última sincronização realizada com sucesso
+                  Sincronização concluída
                   {dashData?.syncResult
-                    ? ` — ${dashData.syncResult.synced} pedido(s) sincronizado(s)`
+                    ? ` — ${dashData.syncResult.newOrders} novo(s), ${dashData.syncResult.updatedOrders} atualizado(s)`
                     : ''}
                 </span>
               </>
@@ -578,9 +531,9 @@ export default function DashboardContent() {
               </button>
             )}
 
-            {/* Botão de Sync Incremental */}
+            {/* Botão de Sync */}
             <button
-              className={`ui-button w-fit dash-sync-btn ${!canSync ? 'dash-sync-btn-cooldown' : 'ui-button--info'}`}
+              className={`ui-button w-fit dash-sync-btn ${canSync ? 'ui-button--info' : ''}`}
               onClick={handleSync}
               disabled={!canSync}
               id='sync-orders-btn'
@@ -588,15 +541,9 @@ export default function DashboardContent() {
               {syncing ? (
                 <span className='dash-sync-spinner' />
               ) : (
-                <FontAwesomeIcon icon={canSync ? faArrowsRotate : faLock} />
+                <FontAwesomeIcon icon={faArrowsRotate} />
               )}
-              <span>
-                {syncing
-                  ? 'Sincronizando...'
-                  : canSync
-                    ? 'Sincronizar Pedidos'
-                    : `Sincronizar novamente em ${formatRemainingTime(cooldown)}`}
-              </span>
+              <span>{syncing ? 'Sincronizando...' : 'Sincronizar Pedidos'}</span>
             </button>
           </div>
         </div>

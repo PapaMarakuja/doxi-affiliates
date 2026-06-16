@@ -32,7 +32,8 @@ export interface DashboardData {
   chartMonthly: { label: string; value: number }[];
   chartDaily: { label: string; value: number }[];
   syncResult: {
-    synced: number;
+    newOrders: number;
+    updatedOrders: number;
     apiStatus: string;
     error: string | null;
   } | null;

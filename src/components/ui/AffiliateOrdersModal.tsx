@@ -42,6 +42,10 @@ interface AffiliateOrdersModalProps {
   onClose: () => void;
   affiliateId: string;
   affiliateName?: string;
+  /** ISO string — início do período a exibir (ex: último payout pago). Se omitido, usa início do cadastro. */
+  periodStart?: string | null;
+  /** ISO string — fim do período a exibir. Se omitido, usa agora. */
+  periodEnd?: string | null;
 }
 
 export function AffiliateOrdersModal({
@@ -49,10 +53,12 @@ export function AffiliateOrdersModal({
   onClose,
   affiliateId,
   affiliateName,
+  periodStart: periodStartProp,
+  periodEnd: periodEndProp,
 }: AffiliateOrdersModalProps) {
   const [orders, setOrders] = useState<AffiliateOrder[]>([]);
   const [commissionRate, setCommissionRate] = useState(0);
-  const [periodStart, setPeriodStart] = useState<string | null>(null);
+  const [resolvedPeriodStart, setResolvedPeriodStart] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -60,21 +66,26 @@ export function AffiliateOrdersModal({
     if (!affiliateId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/affiliates/${affiliateId}/orders`);
+      const params = new URLSearchParams();
+      if (periodStartProp) params.set("from", periodStartProp);
+      if (periodEndProp) params.set("to", periodEndProp);
+
+      const url = `/api/admin/affiliates/${affiliateId}/orders${params.size > 0 ? `?${params.toString()}` : ""}`;
+      const res = await fetch(url);
       const result = await (res.headers.get("content-type")?.includes("application/json")
         ? res.json()
         : null);
       if (res.ok) {
         setOrders(result?.data?.orders || []);
         setCommissionRate(result?.data?.commission_rate || 0);
-        setPeriodStart(result?.data?.period_start || null);
+        setResolvedPeriodStart(result?.data?.period_start || null);
       }
     } catch (err) {
       console.error("[AffiliateOrdersModal] fetchOrders error:", err);
     } finally {
       setLoading(false);
     }
-  }, [affiliateId]);
+  }, [affiliateId, periodStartProp, periodEndProp]);
 
   useEffect(() => {
     if (isOpen) {
@@ -128,9 +139,16 @@ export function AffiliateOrdersModal({
           </div>
         </div>
 
-        {periodStart && (
+        {(resolvedPeriodStart || periodEndProp) && (
           <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
-            Período considerado a partir de: <strong>{formatDate(periodStart)}</strong>
+            Período:{" "}
+            {resolvedPeriodStart && (
+              <><strong>{formatDate(resolvedPeriodStart)}</strong>{" "}</>
+            )}
+            {resolvedPeriodStart && periodEndProp && "→ "}
+            {periodEndProp && (
+              <strong>{formatDate(periodEndProp)}</strong>
+            )}
           </p>
         )}
 

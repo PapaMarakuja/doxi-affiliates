@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "./Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { scrollToElement } from "@/src/lib/utils";
 
 export interface Column<T> {
   key: string;
@@ -51,6 +52,15 @@ export function Table<T extends Record<string, any>>({
   const actualOrderBy = isServerSorted ? orderBy : clientOrderBy;
   const actualOrderDesc = isServerSorted && orderDesc !== undefined ? orderDesc : clientOrderDesc;
 
+  const tableTopRef = useRef<HTMLDivElement | null>(null);
+  const previousPageRef = useRef<number>(actualPage);
+
+  useEffect(() => {
+    if (previousPageRef.current === actualPage) return;
+    scrollToElement(tableTopRef.current, { behavior: "smooth", block: "start" });
+    previousPageRef.current = actualPage;
+  }, [actualPage]);
+
   // Sorting
   let processedData = [...data];
   if (!isServerSorted && actualOrderBy) {
@@ -99,8 +109,9 @@ export function Table<T extends Record<string, any>>({
 
   return (
     <div className="ui-table-container" style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
-      <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-bg)" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+      <div ref={tableTopRef} />
+      <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-bg)", WebkitOverflowScrolling: "touch" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "768px" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--hover)" }}>
               {columns.map((col) => (
@@ -108,7 +119,7 @@ export function Table<T extends Record<string, any>>({
                   key={col.key}
                   className="table-th-text"
                   style={{
-                    padding: "16px",
+                    padding: "12px 16px",
                     cursor: col.sortable ? "pointer" : "default",
                     userSelect: "none",
                     fontWeight: 600,
@@ -116,6 +127,7 @@ export function Table<T extends Record<string, any>>({
                     fontSize: "12px",
                     textTransform: "uppercase",
                     letterSpacing: "0.5px",
+                    whiteSpace: "nowrap",
                     ...col.style
                   }}
                   onClick={() => col.sortable && handleSort(col.key)}
@@ -135,7 +147,7 @@ export function Table<T extends Record<string, any>>({
               Array.from({ length: limit }).map((_, i) => (
                 <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
                   {columns.map((col) => (
-                    <td key={col.key} style={{ padding: "16px" }}>
+                    <td key={col.key} style={{ padding: "12px 16px" }}>
                       <div className="ui-skeleton" style={{ height: "16px", width: "80%", borderRadius: "4px" }} />
                     </td>
                   ))}
@@ -149,18 +161,18 @@ export function Table<T extends Record<string, any>>({
               </tr>
             ) : (
               displayData.map((row, i) => (
-                <tr 
-                  key={i} 
-                  style={{ 
-                    borderBottom: "1px solid var(--border)", 
+                <tr
+                  key={i}
+                  style={{
+                    borderBottom: "1px solid var(--border)",
                     transition: "background 0.2s",
-                    cursor: onRowClick ? "pointer" : "default" 
-                  }} 
+                    cursor: onRowClick ? "pointer" : "default"
+                  }}
                   className="table-row-hover"
                   onClick={() => onRowClick && onRowClick(row)}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} style={{ padding: "16px", color: "var(--text-main)", fontSize: "14px" }}>
+                    <td key={col.key} style={{ padding: "12px 16px", color: "var(--text-main)", fontSize: "14px", whiteSpace: "nowrap" }}>
                       {col.render ? col.render(row) : row[col.key as keyof T]}
                     </td>
                   ))}

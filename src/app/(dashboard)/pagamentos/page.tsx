@@ -8,6 +8,7 @@ import { faMoneyBillTransfer, faSackDollar, faCalendarCheck, faKey, faTriangleEx
 import { useRouter } from "next/navigation";
 import { Button } from "@/src/components/ui/Button";
 import { Skeleton } from "@/src/components/ui/Skeleton";
+import { Badge } from "@/src/components/ui/Badge";
 
 interface Payout {
   id: string;
@@ -87,35 +88,28 @@ export default function PagamentosPage() {
       header: "Status",
       sortable: true,
       render: (item) => {
-        let bg = "var(--hover)";
-        let color = "var(--text-muted)";
+        let bg = "rgba(107, 124, 141, 0.12)";
+        let color = "var(--text-muted, #6B7C8D)";
         let label = "Pendente";
 
         if (item.status === "paid") {
-          bg = "rgba(46, 125, 50, 0.1)";
-          color = "#2e7d32";
+          bg = "rgba(34, 197, 94, 0.12)";
+          color = "var(--success, #22c55e)";
           label = "Pago";
         } else if (item.status === "failed" || item.status === "cancelled") {
-          bg = "rgba(211, 47, 47, 0.1)";
-          color = "#d32f2f";
+          bg = "rgba(239, 68, 68, 0.12)";
+          color = "var(--error, #ef4444)";
           label = "Cancelado";
         } else if (item.status === "processing") {
-          bg = "rgba(237, 108, 2, 0.1)";
-          color = "#ed6c02";
+          bg = "rgba(245, 158, 11, 0.12)";
+          color = "var(--warning, #f59e0b)";
           label = "Processando";
         }
 
         return (
-          <span style={{
-            background: bg,
-            color: color,
-            padding: "4px 8px",
-            borderRadius: "4px",
-            fontSize: "12px",
-            fontWeight: "bold"
-          }}>
+          <Badge bg={bg} color={color} dotColor={color}>
             {label}
-          </span>
+          </Badge>
         );
       }
     }

@@ -6,6 +6,7 @@ import { Table, Column } from "@/src/components/ui/Table";
 import { Select, SelectOption } from "@/src/components/ui/Select";
 import { Skeleton } from "@/src/components/ui/Skeleton";
 import { Modal } from "@/src/components/ui/Modal";
+import { Badge } from "@/src/components/ui/Badge";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch, faBoxOpen, faCalendarAlt, faClockRotateLeft, faMoneyBillWave, faChartLine } from "@fortawesome/free-solid-svg-icons";
 
@@ -80,8 +81,6 @@ export default function MinhasVendasPage() {
   const [dateEnd, setDateEnd] = useState("");
 
   // Paginação tabela
-  const [page, setPage] = useState(1);
-
   // Modal de Detalhes
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,6 +91,7 @@ export default function MinhasVendasPage() {
       const res = await fetch("/api/sales");
       if (res.ok) {
         const { data } = await res.json();
+        console.log("🚀 ~ MinhasVendasPage ~ data:", data)
         setSales(data.sales || []);
         setStats(data.stats || {
           totalCommissions: 0,
@@ -192,26 +192,9 @@ export default function MinhasVendasPage() {
       render: (item) => {
         const badge = getCommissionStatusBadge(item.isLiberated, item.status);
         return (
-          <span style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "4px 10px",
-            borderRadius: "100px",
-            fontSize: "12px",
-            fontWeight: 600,
-            backgroundColor: badge.bg,
-            color: badge.color,
-            width: "fit-content"
-          }}>
-            <span style={{
-              width: "6px",
-              height: "6px",
-              borderRadius: "50%",
-              backgroundColor: badge.color
-            }} />
+          <Badge bg={badge.bg} color={badge.color} dotColor={badge.color}>
             {badge.text}
-          </span>
+          </Badge>
         );
       }
     },
@@ -364,12 +347,11 @@ export default function MinhasVendasPage() {
         </div>
 
         <Table
+          key={`${productFilter ?? ""}|${dateStart}|${dateEnd}`}
           data={filteredSales}
           columns={columns}
           loading={loading}
-          page={page}
           limit={10}
-          onPageChange={setPage}
           onRowClick={handleRowClick}
         />
       </Card>
@@ -398,26 +380,9 @@ export default function MinhasVendasPage() {
                   {(() => {
                     const badge = getCommissionStatusBadge(selectedSale.isLiberated, selectedSale.status);
                     return (
-                      <span style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: "4px 10px",
-                        borderRadius: "100px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        backgroundColor: badge.bg,
-                        color: badge.color,
-                        width: "fit-content"
-                      }}>
-                        <span style={{
-                          width: "6px",
-                          height: "6px",
-                          borderRadius: "50%",
-                          backgroundColor: badge.color
-                        }} />
+                      <Badge bg={badge.bg} color={badge.color} dotColor={badge.color}>
                         {badge.text}
-                      </span>
+                      </Badge>
                     );
                   })()}
                 </div>

@@ -246,6 +246,7 @@ export function PayoutCreateModal({ isOpen, onClose, onSuccess }: PayoutCreateMo
           onClose={() => setShowOrdersModal(false)}
           affiliateId={selectedAffiliateId}
           affiliateName={affiliates.find(a => a.id === selectedAffiliateId)?.name}
+          periodStart={calculationData?.lastPayoutDate ?? null}
         />
       )}
     </>

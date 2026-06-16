@@ -254,6 +254,7 @@ export default function AfiliadoEditPage() {
   };
 
   const handleCopyClubLink = async (item: any) => {
+    console.log("🚀 ~ handleCopyClubLink ~ item:", item)
     const textToCopy = `Dados de Acesso - Doxi Affiliates\n\nUsuário: ${item.name}\nSenha: ${item.temp_password}\n\nLink: ${window.location.origin}/login`;
     try {
       await navigator.clipboard.writeText(textToCopy);
