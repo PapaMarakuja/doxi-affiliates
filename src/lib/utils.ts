@@ -10,7 +10,6 @@ export function returnRole(role: "admin" | "affiliate") {
 }
 
 export function getAffiliateDataStartDate(affiliateCreatedAt: string | null | undefined): string | null {
-  return "2026-04-01T03:00:00.000Z";
   if (!affiliateCreatedAt) return null;
   const createdAt = new Date(affiliateCreatedAt);
   if (Number.isNaN(createdAt.getTime())) return null;
