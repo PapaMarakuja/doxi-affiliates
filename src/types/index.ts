@@ -4,6 +4,7 @@ export * from "./coupon";
 export * from "./orders";
 export * from "./session";
 export * from "./shopifyOrder";
+export * from "./nuvemshopOrder";
 export * from "./syncState";
 export * from "./profile";
 export * from "./sidebarItem";

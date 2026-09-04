@@ -2801,14 +2801,46 @@ body {
 
 .dash-sync-message {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   font-size: 14px;
   color: var(--text-muted);
 }
 
-.dash-sync-message .fa-circle-check {
+.dash-sync-status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-sync-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.dash-sync-item--success {
   color: var(--success);
+}
+
+.dash-sync-item--error {
+  color: var(--error, #ef4444);
+}
+
+.dash-sync-item strong {
+  color: var(--text-primary);
+}
+
+.dash-sync-item .fa-circle-check {
+  color: var(--success);
+}
+
+.dash-sync-item .fa-circle-exclamation {
+  color: var(--error, #ef4444);
 }
 
 .w-fit {

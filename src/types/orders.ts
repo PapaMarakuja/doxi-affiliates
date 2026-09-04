@@ -1,6 +1,9 @@
+export type OrderSource = "shopify" | "nuvemshop";
+
 export interface Orders {
   id: string;
-  shopify_order_id: string;
+  external_order_id: string;
+  source: OrderSource;
   affiliate_id: string | null;
   coupon_id: string | null;
   coupon_code: string | null;
@@ -31,10 +34,17 @@ export interface DashboardData {
   orders: Orders[];
   chartMonthly: { label: string; value: number }[];
   chartDaily: { label: string; value: number }[];
-  syncResult: {
-    newOrders: number;
-    updatedOrders: number;
-    apiStatus: string;
-    error: string | null;
-  } | null;
+  syncResult: DashboardSyncResult | null;
+}
+
+export interface StoreSyncResult {
+  newOrders: number;
+  updatedOrders: number;
+  apiStatus: string;
+  error: string | null;
+}
+
+export interface DashboardSyncResult {
+  shopify: StoreSyncResult | null;
+  nuvemshop: StoreSyncResult | null;
 }

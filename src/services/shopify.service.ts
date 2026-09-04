@@ -3,6 +3,11 @@ import type {
   ShopifyOrdersResponse,
   Coupon,
 } from "@/src/types";
+import type {
+  IStoreService,
+  NormalizedOrder,
+  NormalizedCustomer,
+} from "./storeService.interface";
 
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN!;
 const SHOPIFY_ADMIN_ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN!;
@@ -25,7 +30,9 @@ const ORDER_FIELDS = [
   "customer",
 ].join(",");
 
-export class ShopifyService {
+export class ShopifyService implements IStoreService {
+  readonly source = "shopify" as const;
+
   private readonly baseUrl: string;
   private readonly headers: Record<string, string>;
 
@@ -70,13 +77,62 @@ export class ShopifyService {
     return { data, nextPageInfo };
   }
 
+  // ──────────────────────────────────────────────
+  // Normalização
+  // ──────────────────────────────────────────────
+
+  private normalize(order: ShopifyOrder): NormalizedOrder {
+    const discountCodes = (order.discount_codes ?? []).map((d) => d.code);
+    const firstDiscountCode = discountCodes[0] ?? null;
+
+    const shippingCost = order.total_shipping_price_set?.shop_money?.amount
+      ? parseFloat(order.total_shipping_price_set.shop_money.amount)
+      : 0;
+
+    let customer: NormalizedCustomer | null = null;
+    if (order.customer) {
+      customer = {
+        externalId: String(order.customer.id),
+        email: order.customer.email,
+        firstName: order.customer.first_name,
+        lastName: order.customer.last_name,
+      };
+    }
+
+    return {
+      externalId: String(order.id),
+      source: "shopify",
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+      cancelledAt: order.cancelled_at,
+      cancelReason: order.cancel_reason,
+      financialStatus: order.financial_status,
+      totalPrice: order.current_total_price,
+      totalDiscounts: order.total_discounts ?? "0",
+      shippingCost,
+      currency: order.currency,
+      firstDiscountCode,
+      discountCodes,
+      lineItems: (order.line_items ?? []).map((li) => ({
+        title: li.title,
+        quantity: li.quantity,
+        price: li.price,
+      })),
+      customer,
+    };
+  }
+
+  // ──────────────────────────────────────────────
+  // IStoreService
+  // ──────────────────────────────────────────────
+
   /**
    * Busca TODAS as orders da loja — sem filtro de cupom.
    * Usado pelo admin para ter visão completa das vendas.
    * Suporta paginação automática.
    */
-  async getAllOrders(sinceDate?: string): Promise<ShopifyOrder[]> {
-    console.log('🚀 ~ getAllOrders ~ sinceDate:', sinceDate)
+  async getAllOrders(sinceDate?: string): Promise<NormalizedOrder[]> {
+    console.log("🚀 ~ ShopifyService.getAllOrders ~ sinceDate:", sinceDate);
     const allOrders: ShopifyOrder[] = [];
     let hasMore = true;
     let pageInfo: string | undefined;
@@ -104,7 +160,7 @@ export class ShopifyService {
       hasMore = !!pageInfo;
     }
 
-    return allOrders;
+    return allOrders.map((o) => this.normalize(o));
   }
 
   /**
@@ -114,7 +170,7 @@ export class ShopifyService {
   async getOrdersByDiscountCodes(
     coupons: Coupon[],
     sinceDate?: string
-  ): Promise<ShopifyOrder[]> {
+  ): Promise<NormalizedOrder[]> {
     if (coupons.length === 0) return [];
 
     const allOrders: ShopifyOrder[] = [];
@@ -154,17 +210,18 @@ export class ShopifyService {
       }
     }
 
-    return allOrders;
+    return allOrders.map((o) => this.normalize(o));
   }
 
-  async getOrderById(shopifyOrderId: string): Promise<ShopifyOrder | null> {
+  async getOrderById(externalOrderId: string): Promise<NormalizedOrder | null> {
     try {
       const { data } = await this.fetchFromShopify<{ order: ShopifyOrder }>(
-        `/orders/${shopifyOrderId}.json`
+        `/orders/${externalOrderId}.json`
       );
-      return data.order;
+      return this.normalize(data.order);
     } catch {
       return null;
     }
   }
 }
+

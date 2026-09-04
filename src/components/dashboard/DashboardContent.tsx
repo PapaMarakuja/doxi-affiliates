@@ -9,6 +9,7 @@ import {
   faBagShopping,
   faArrowsRotate,
   faCircleCheck,
+  faCircleExclamation,
   faChartSimple,
   faCloudArrowDown,
   faCopy,
@@ -500,16 +501,29 @@ export default function DashboardContent() {
 
         <div className='dash-footer-sync'>
           <div className='dash-sync-message'>
-            {lastSyncSuccess && (
-              <>
-                <FontAwesomeIcon icon={faCircleCheck} />
-                <span>
-                  Sincronização concluída
-                  {dashData?.syncResult
-                    ? ` — ${dashData.syncResult.newOrders} novo(s), ${dashData.syncResult.updatedOrders} atualizado(s)`
-                    : ''}
-                </span>
-              </>
+            {lastSyncSuccess && dashData?.syncResult && (
+              <ul className='dash-sync-status-list'>
+                {dashData.syncResult.shopify && (
+                  <li className={`dash-sync-item ${dashData.syncResult.shopify.error ? 'dash-sync-item--error' : 'dash-sync-item--success'}`}>
+                    <FontAwesomeIcon icon={dashData.syncResult.shopify.error ? faCircleExclamation : faCircleCheck} />
+                    <span>
+                      <strong>Shopify</strong>
+                      {dashData.syncResult.shopify.error
+                        ? `: Erro — ${dashData.syncResult.shopify.error}`
+                        : `: ${dashData.syncResult.shopify.newOrders} novo(s), ${dashData.syncResult.shopify.updatedOrders} atualizado(s)`}
+                    </span>
+                  </li>
+                )}
+                <li className={`dash-sync-item ${dashData.syncResult.nuvemshop?.error ? 'dash-sync-item--error' : 'dash-sync-item--success'}`}>
+                  <FontAwesomeIcon icon={dashData.syncResult.nuvemshop?.error ? faCircleExclamation : faCircleCheck} />
+                  <span>
+                    <strong>Nuvemshop</strong>
+                    {dashData.syncResult.nuvemshop?.error
+                      ? `: Erro — ${dashData.syncResult.nuvemshop.error}`
+                      : `: ${dashData.syncResult.nuvemshop?.newOrders ?? 0} novo(s), ${dashData.syncResult.nuvemshop?.updatedOrders ?? 0} atualizado(s)`}
+                  </span>
+                </li>
+              </ul>
             )}
           </div>
 
