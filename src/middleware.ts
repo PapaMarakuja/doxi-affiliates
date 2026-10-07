@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PAGE_PATHS = new Set<string>(["/login"]);
-const PUBLIC_API_PREFIXES = ["/api/auth/login"];
+const PUBLIC_PAGE_PATHS = new Set<string>(["/login", "/cadastro"]);
+const PUBLIC_API_PREFIXES = ["/api/auth/login", "/api/cadastro"];
 const ADMIN_PAGE_PREFIXES = ["/afiliados", "/cupons", "/gerenciar-conquistas"];
 const PROTECTED_PAGE_PREFIXES = [
   "/dashboard",

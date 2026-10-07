@@ -1,5 +1,5 @@
-import { createSupabaseServerClient } from "@/src/lib/supabase/server";
-import type { Affiliate, Coupon, Profile } from "@/src/types";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/src/lib/supabase/server";
+import type { Affiliate, Coupon, Profile, ProfileWithEmail } from "@/src/types";
 
 export class AffiliateRepository {
   async getProfileByUserId(userId: string): Promise<Profile | null> {
@@ -16,13 +16,13 @@ export class AffiliateRepository {
   }
 
   async getAffiliateByProfileId(profileId: string): Promise<Affiliate | null> {
-    const supabase = await createSupabaseServerClient();
+    const supabase = await createSupabaseServiceClient();
 
     const { data, error } = await supabase
       .from("affiliates")
       .select("*")
       .eq("profile_id", profileId)
-      .single();
+      .maybeSingle();
 
     if (error) return null;
     return data as Affiliate;
@@ -224,7 +224,7 @@ export class AffiliateRepository {
     return !error;
   }
 
-  async getProfileById(profileId: string): Promise<Profile | null> {
+  async getProfileById(profileId: string): Promise<ProfileWithEmail | null> {
     const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase
@@ -233,11 +233,26 @@ export class AffiliateRepository {
       .eq("id", profileId)
       .single();
 
-    if (error) return null;
-    return data as Profile;
+    if (error || !data) return null;
+
+    let email: string | null = null;
+    if (data.user_id) {
+      try {
+        const serviceClient = await createSupabaseServiceClient();
+        const { data: userData } = await serviceClient.auth.admin.getUserById(data.user_id);
+        email = userData?.user?.email ?? null;
+      } catch (err) {
+        console.error("Error fetching auth user email:", err);
+      }
+    }
+
+    return {
+      ...(data as Profile),
+      email,
+    };
   }
 
-  async getUnlinkedProfiles(): Promise<Profile[]> {
+  async getUnlinkedProfiles(): Promise<ProfileWithEmail[]> {
     const supabase = await createSupabaseServerClient();
 
     // Get all profile IDs that ARE linked to an affiliate
@@ -264,8 +279,25 @@ export class AffiliateRepository {
 
     const { data, error } = await query;
 
-    if (error) return [];
-    return (data as Profile[]) ?? [];
+    if (error || !data) return [];
+
+    try {
+      const serviceClient = await createSupabaseServiceClient();
+      const { data: usersData } = await serviceClient.auth.admin.listUsers();
+      const emailByUserId = new Map(
+        (usersData?.users ?? []).map((u) => [u.id, u.email])
+      );
+
+      return (data as Profile[]).map((p) => ({
+        ...p,
+        email: emailByUserId.get(p.user_id) ?? null,
+      }));
+    } catch {
+      return (data as Profile[]).map((p) => ({
+        ...p,
+        email: null,
+      }));
+    }
   }
 
   async linkProfileToAffiliate(affiliateId: string, profileId: string): Promise<Affiliate | null> {

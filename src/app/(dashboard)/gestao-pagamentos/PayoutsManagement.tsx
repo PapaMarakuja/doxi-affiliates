@@ -22,6 +22,7 @@ import {
   faListAlt,
   faLayerGroup,
   faCopy,
+  faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import { formatCurrency, formatDate, copyToClipboard } from "@/src/lib/utils";
 import { Payout, PayoutSummary } from "@/src/types/payout";
@@ -215,32 +216,58 @@ export function PayoutsManagement() {
               color: "var(--text-muted)",
               marginTop: "2px",
               display: "flex",
-              cursor: "pointer",
               alignItems: "center",
               gap: "6px",
             }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopyPixKey(item.pix_key);
-            }}
           >
-            PIX: {item.pix_key}
-            {item.pix_key && item.pix_key.toLowerCase() !== "não cadastrada" && item.pix_key.toLowerCase() !== "nao cadastrada" && (
-              <button
+            {item.affiliates?.payout_method === "cupom" ? (
+              <span
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--text-muted)",
-                  padding: 0,
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
+                  gap: "4px",
+                  padding: "2px 8px",
+                  borderRadius: "12px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  background: "rgba(245, 184, 191, 0.2)",
+                  color: "var(--pink-dark)",
                 }}
-                title="Copiar chave PIX"
               >
-                <FontAwesomeIcon icon={faCopy} style={{ fontSize: "12px" }} />
-              </button>
+                <FontAwesomeIcon icon={faTag} style={{ fontSize: "10px" }} />
+                Retirada: Cupom na Loja
+              </span>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  cursor: "pointer",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyPixKey(item.pix_key);
+                }}
+              >
+                PIX: {item.pix_key}
+                {item.pix_key && item.pix_key.toLowerCase() !== "não cadastrada" && item.pix_key.toLowerCase() !== "nao cadastrada" && (
+                  <button
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--text-muted)",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    title="Copiar chave PIX"
+                  >
+                    <FontAwesomeIcon icon={faCopy} style={{ fontSize: "12px" }} />
+                  </button>
+                )}
+              </div>
             )}
-
           </div>
         </div>
       ),

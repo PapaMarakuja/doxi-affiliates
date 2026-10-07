@@ -1,41 +1,119 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
 
-export default function ThemeToggle({ collapsed }: { collapsed: boolean }) {
-  const [dark, setDark] = useState<boolean | null>(null);
+export interface ThemeToggleProps {
+  collapsed?: boolean;
+  variant?: "sidebar" | "floating";
+  className?: string;
+}
+
+function subscribeTheme(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  window.addEventListener("storage", callback);
+
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  mediaQuery.addEventListener("change", callback);
+
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.attributeName === "class") {
+        callback();
+      }
+    }
+  });
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+
+  return () => {
+    window.removeEventListener("storage", callback);
+    mediaQuery.removeEventListener("change", callback);
+    observer.disconnect();
+  };
+}
+
+function getThemeSnapshot(): boolean {
+  return document.documentElement.classList.contains("dark");
+}
+
+function getServerThemeSnapshot(): boolean {
+  return false;
+}
+
+export default function ThemeToggle({
+  collapsed = false,
+  variant = "sidebar",
+  className = "",
+}: ThemeToggleProps) {
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Initial check on mount
-    const stored = localStorage.getItem("theme");
-    const preferDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark = stored === "dark" || (!stored && preferDark);
-    
-    setDark(isDark);
-    
-    if (!stored) {
-      localStorage.setItem("theme", isDark ? "dark" : "light");
-    }
+    setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (dark === null) return; // Prevent effect on first render
+  const isDark = useSyncExternalStore(
+    subscribeTheme,
+    getThemeSnapshot,
+    getServerThemeSnapshot
+  );
 
-    if (dark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
+  const toggleTheme = () => {
+    const isCurrentlyDark = document.documentElement.classList.contains("dark");
+    if (isCurrentlyDark) {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
+    } else {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     }
-  }, [dark]);
+  };
 
-  if (dark === null) {
-    // render placeholder button to avoid hydration mismatch while loading theme
+  if (variant === "floating") {
+    if (!mounted) {
+      return (
+        <button
+          type="button"
+          className={`theme-toggle-floating ${className}`}
+          aria-label="Alternar tema"
+          suppressHydrationWarning
+        >
+          <span className="theme-toggle-floating-icon">
+            <FontAwesomeIcon icon={faMoon} />
+          </span>
+        </button>
+      );
+    }
+
     return (
-      <button className={`theme-toggle-btn ${collapsed ? "theme-toggle-btn--collapsed" : ""}`}>
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className={`theme-toggle-floating ${className}`}
+        aria-label={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
+        title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
+        suppressHydrationWarning
+      >
+        <span className="theme-toggle-floating-icon">
+          <FontAwesomeIcon icon={isDark ? faSun : faMoon} />
+        </span>
+      </button>
+    );
+  }
+
+  if (!mounted) {
+    return (
+      <button
+        type="button"
+        className={`theme-toggle-btn ${collapsed ? "theme-toggle-btn--collapsed" : ""} ${className}`}
+        aria-label="Alternar tema"
+        suppressHydrationWarning
+      >
         <span className="sidebar-link-icon">
           <FontAwesomeIcon icon={faMoon} />
         </span>
@@ -46,13 +124,16 @@ export default function ThemeToggle({ collapsed }: { collapsed: boolean }) {
 
   return (
     <button
-      onClick={() => setDark(!dark)}
-      className={`theme-toggle-btn ${collapsed ? "theme-toggle-btn--collapsed" : ""}`}
+      type="button"
+      onClick={toggleTheme}
+      className={`theme-toggle-btn ${collapsed ? "theme-toggle-btn--collapsed" : ""} ${className}`}
+      aria-label={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
+      suppressHydrationWarning
     >
       <span className="sidebar-link-icon">
-        <FontAwesomeIcon icon={dark ? faSun : faMoon} />
+        <FontAwesomeIcon icon={isDark ? faSun : faMoon} />
       </span>
-      {!collapsed && <span>{dark ? "Modo Claro" : "Modo Escuro"}</span>}
+      {!collapsed && <span>{isDark ? "Modo Claro" : "Modo Escuro"}</span>}
     </button>
   );
 }

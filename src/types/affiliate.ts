@@ -1,5 +1,7 @@
 import { Coupon } from "./coupon";
 
+export type PayoutMethod = "pix" | "cupom";
+
 export interface Affiliate {
   id: string;
   name: string;
@@ -7,6 +9,7 @@ export interface Affiliate {
   created_at: string;
   profile_id: string | null;
   pix_key: string | null;
+  payout_method: PayoutMethod | null;
   contact_phone: string | null;
   contact_email: string | null;
 }

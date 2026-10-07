@@ -95,7 +95,7 @@ export async function GET(request: Request) {
       }
 
       return {
-        id: o.shopify_order_id,
+        id: o.shopify_order_id || o.id,
         created_at: o.created_at,
         commission: parseFloat(commission.toFixed(2)),
         status: o.financial_status,

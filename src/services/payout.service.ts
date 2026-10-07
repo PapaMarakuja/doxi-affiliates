@@ -71,6 +71,7 @@ export class PayoutService {
       affiliateId,
       name: affiliate.name,
       pixKey: affiliate.pix_key || "Não cadastrada",
+      payoutMethod: (affiliate.payout_method as "pix" | "cupom") || "pix",
       baseCommission: baseCommissionTotal,
       achievementsCommission: achievementsCommissionTotal,
       totalEarned,

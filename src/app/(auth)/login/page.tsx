@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/src/lib/auth/session';
 import { LoginForm } from '@/src/components/auth/LoginForm';
 import { Card } from '@/src/components/ui/Card';
+import ThemeToggle from '@/src/components/ThemeToggle';
 import loginBackground from '@/src/assets/images/login-background.png';
 import doxiClubLightLogo from '@/src/assets/images/doxi-club-light.png';
 import doxiClubDarkLogo from '@/src/assets/images/doxi-club-dark.png';
@@ -25,6 +27,7 @@ export default async function LoginPage() {
   return (
     <div
       style={{
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -38,6 +41,7 @@ export default async function LoginPage() {
         backgroundRepeat: 'no-repeat',
       }}
     >
+      <ThemeToggle variant="floating" />
       <header
         style={{
           display: 'flex',
@@ -99,9 +103,16 @@ export default async function LoginPage() {
       >
         <Card style={{ padding: '12px 16px' }}>
           Quer fazer parte?{' '}
-          <a href='#' style={{ color: 'var(--pink-dark)', textDecoration: 'none' }}>
-            Entre em contato
-          </a>
+          <Link
+            href='/cadastro'
+            style={{
+              color: 'var(--pink-dark)',
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Cadastre-se
+          </Link>
         </Card>
       </footer>
     </div>

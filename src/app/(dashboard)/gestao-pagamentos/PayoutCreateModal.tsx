@@ -8,7 +8,7 @@ import { Skeleton } from "@/src/components/ui/Skeleton";
 import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatCurrency, formatDate } from "@/src/lib/utils";
-import { faWallet, faMoneyBillTransfer, faClock, faShoppingBag, faCopy, faListAlt } from "@fortawesome/free-solid-svg-icons";
+import { faWallet, faMoneyBillTransfer, faClock, faShoppingBag, faCopy, faListAlt, faTag } from "@fortawesome/free-solid-svg-icons";
 import { AffiliateOrdersModal } from "@/src/components/ui/AffiliateOrdersModal";
 
 interface PayoutCreateModalProps {
@@ -143,33 +143,47 @@ export function PayoutCreateModal({ isOpen, onClose, onSuccess }: PayoutCreateMo
 
           {calculationData && !loadingCalculation && (
             <div className="flex flex-col gap-6">
-              <div style={{ padding: "16px", background: "var(--info-bg)", borderRadius: "12px", border: "1px solid var(--info-border)", display: "flex", alignItems: "center", gap: "16px" }}>
-                <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--info)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <FontAwesomeIcon icon={faWallet} />
+              {calculationData.payoutMethod === "cupom" ? (
+                <div style={{ padding: "16px", background: "rgba(245, 184, 191, 0.15)", borderRadius: "12px", border: "1px solid var(--pink-dark)", display: "flex", alignItems: "center", gap: "16px" }}>
+                  <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--pink-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <FontAwesomeIcon icon={faTag} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: "12px", color: "var(--pink-dark)", fontWeight: 700, textTransform: "uppercase" }}>Opção de Retirada: Cupom na Loja</p>
+                    <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "var(--text-main)", marginTop: "2px" }}>
+                      Este afiliado prefere receber em Cupom. Todo dia 10, emita e encaminhe o cupom no valor calculado.
+                    </p>
+                  </div>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: "12px", color: "var(--info-text)", opacity: 0.8 }}>Chave PIX para Transferência</p>
-                  <p style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "var(--info-text)", wordBreak: "break-all" }}>{calculationData.pixKey}</p>
+              ) : (
+                <div style={{ padding: "16px", background: "var(--info-bg)", borderRadius: "12px", border: "1px solid var(--info-border)", display: "flex", alignItems: "center", gap: "16px" }}>
+                  <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--info)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <FontAwesomeIcon icon={faWallet} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: "12px", color: "var(--info-text)", opacity: 0.8 }}>Chave PIX para Transferência</p>
+                    <p style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "var(--info-text)", wordBreak: "break-all" }}>{calculationData.pixKey}</p>
+                  </div>
+                  {calculationData.pixKey && calculationData.pixKey !== "Não cadastrada" && (
+                    <button
+                      title="Copiar chave PIX"
+                      onClick={() => {
+                        navigator.clipboard.writeText(calculationData.pixKey);
+                        addToast({ message: "Chave PIX copiada!", type: "success" });
+                      }}
+                      style={{
+                        background: "var(--info)", border: "none", borderRadius: "8px",
+                        color: "#fff", cursor: "pointer", padding: "8px 10px",
+                        display: "flex", alignItems: "center", gap: "6px", fontSize: "12px",
+                        fontWeight: 600, flexShrink: 0,
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faCopy} />
+                      Copiar
+                    </button>
+                  )}
                 </div>
-                {calculationData.pixKey && calculationData.pixKey !== "Não cadastrada" && (
-                  <button
-                    title="Copiar chave PIX"
-                    onClick={() => {
-                      navigator.clipboard.writeText(calculationData.pixKey);
-                      addToast({ message: "Chave PIX copiada!", type: "success" });
-                    }}
-                    style={{
-                      background: "var(--info)", border: "none", borderRadius: "8px",
-                      color: "#fff", cursor: "pointer", padding: "8px 10px",
-                      display: "flex", alignItems: "center", gap: "6px", fontSize: "12px",
-                      fontWeight: 600, flexShrink: 0,
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faCopy} />
-                    Copiar
-                  </button>
-                )}
-              </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
                 <div style={{ padding: "16px", background: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)" }}>

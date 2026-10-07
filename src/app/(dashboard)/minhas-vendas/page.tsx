@@ -16,7 +16,7 @@ interface SaleItem {
 }
 
 interface Sale {
-  id: string;
+  id: string | null;
   created_at: string;
   commission: number;
   status: string;
@@ -152,11 +152,15 @@ export default function MinhasVendasPage() {
       key: "id",
       header: "Pedido",
       sortable: true,
-      render: (item) => (
-        <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
-          #DX-{item.id.substring(0, 6)}
-        </span>
-      )
+      render: (item) => {
+        const orderId = item.id ? String(item.id) : "";
+        const displayId = orderId ? (orderId.length > 8 ? orderId.substring(0, 6) : orderId) : "------";
+        return (
+          <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
+            #DX-{displayId}
+          </span>
+        );
+      }
     },
     {
       key: "items",
@@ -372,7 +376,9 @@ export default function MinhasVendasPage() {
             }}>
               <div style={{ padding: "16px", background: "var(--hover)", borderRadius: "8px" }}>
                 <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>ID do Pedido</p>
-                <p style={{ margin: 0, fontWeight: 600 }}>#DX-{selectedSale.id}</p>
+                <p style={{ margin: 0, fontWeight: 600 }}>
+                  #DX-{selectedSale.id ? String(selectedSale.id).substring(0, 8) : "------"}
+                </p>
               </div>
               <div style={{ padding: "16px", background: "var(--hover)", borderRadius: "8px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
                 <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>Status da Comissão</p>

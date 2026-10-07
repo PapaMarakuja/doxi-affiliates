@@ -139,7 +139,9 @@ export class NuvemshopService implements IStoreService {
       lineItems: (order.products ?? []).map((p) => ({
         title: p.name,
         quantity: p.quantity,
-        price: p.price,
+        // Guard: Nuvemshop may return null for price when it lives on the variant.
+        // Fall back to "0" to avoid DB NOT NULL violations.
+        price: p.price ?? "0",
       })),
       customer,
     };

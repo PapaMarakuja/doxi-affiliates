@@ -28,8 +28,10 @@ import {
   faRotate,
   faCopy,
   faTimes,
+  faTag,
+  faMoneyBillTransfer,
 } from '@fortawesome/free-solid-svg-icons';
-import type { Affiliate, Coupon, Profile } from '@/src/types';
+import type { Affiliate, Coupon, Profile, ProfileWithEmail, PayoutMethod } from '@/src/types';
 import { returnRole } from '@/src/lib/utils';
 import { useConfirmDialog } from '@/src/contexts/ConfirmDialogContext';
 import { applyPixMask, guessPixType, maskPhone } from '@/src/lib/masks';
@@ -56,7 +58,7 @@ export default function AfiliadoEditPage() {
   const [name, setName] = useState('');
   const [commissionRate, setCommissionRate] = useState<string>('');
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [linkedProfile, setLinkedProfile] = useState<Profile | null>(null);
+  const [linkedProfile, setLinkedProfile] = useState<ProfileWithEmail | null>(null);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [createdAffiliateId, setCreatedAffiliateId] = useState<string | null>(null);
   const confirm = useConfirmDialog();
@@ -66,6 +68,7 @@ export default function AfiliadoEditPage() {
   // New fields on Affiliate
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [payoutMethod, setPayoutMethod] = useState<PayoutMethod>('pix');
   const [pixKey, setPixKey] = useState('');
   const [manualPixType, setManualPixType] = useState<'cpf_cnpj' | 'phone' | 'email' | 'random' | null>(null);
 
@@ -95,6 +98,7 @@ export default function AfiliadoEditPage() {
         setProfileId(affiliate.profile_id || null);
         setContactEmail(affiliate.contact_email || '');
         setContactPhone(affiliate.contact_phone || '');
+        setPayoutMethod(affiliate.payout_method || 'pix');
         setPixKey(affiliate.pix_key || '');
       }
       if (coupons) {
@@ -138,7 +142,8 @@ export default function AfiliadoEditPage() {
       profile_id: profileId,
       contact_email: contactEmail.trim() || null,
       contact_phone: contactPhone.trim() || null,
-      pix_key: pixKey.trim() || null,
+      payout_method: payoutMethod,
+      pix_key: payoutMethod === 'pix' ? (pixKey.trim() || null) : null,
     };
   };
 
@@ -253,10 +258,24 @@ export default function AfiliadoEditPage() {
     }
   };
 
-  const handleCopyClubLink = async (item: any) => {
-    console.log("🚀 ~ handleCopyClubLink ~ item:", item)
-    const textToCopy = `Dados de Acesso - Doxi Affiliates\n\nUsuário: ${item.name}\nSenha: ${item.temp_password}\n\nLink: ${window.location.origin}/login`;
+  const handleCopyClubLink = async (item: ProfileWithEmail) => {
     try {
+      let email = item.email;
+
+      if (!email && item.id) {
+        const res = await fetch(`/api/profiles/${item.id}`);
+        if (res.ok) {
+          const resData = await res.json();
+          email = resData.data?.email;
+          if (email) {
+            setLinkedProfile((prev) => (prev ? { ...prev, email } : prev));
+          }
+        }
+      }
+
+      const username = email ? email.split('@')[0] : (item.name || '');
+      const textToCopy = `Dados de Acesso - Doxi Affiliates\n\nUsuário: ${username}\nSenha: ${item.temp_password || ''}\n\nLink: ${window.location.origin}/login`;
+
       await navigator.clipboard.writeText(textToCopy);
       addToast({ message: "Link copiado!", type: "success" });
     } catch {
@@ -395,7 +414,7 @@ export default function AfiliadoEditPage() {
   };
 
   // ─── Profile handlers ────────────────────────────────────
-  const profileColumns: Column<Profile>[] = [
+  const profileColumns: Column<ProfileWithEmail>[] = [
     {
       key: 'name',
       header: 'Nome',
@@ -494,7 +513,7 @@ export default function AfiliadoEditPage() {
     }
   ];
 
-  const handleProfileLinked = (profile: Profile) => {
+  const handleProfileLinked = (profile: ProfileWithEmail) => {
     setProfileId(profile.id);
     setLinkedProfile(profile);
   };
@@ -634,70 +653,140 @@ export default function AfiliadoEditPage() {
               />
             </div>
             <div className='form-col-4'>
-              {(() => {
-                const currentPixType = manualPixType || guessPixType(pixKey || "");
-                const currentPixTypeConfig = PIX_TYPES.find(t => t.value === currentPixType) || PIX_TYPES[3];
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-main)' }}>
+                Opção de Retirada (todo dia 10)
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  background: 'var(--hover)',
+                  padding: '3px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  gap: '4px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setPayoutMethod('pix')}
+                  disabled={loadingAffiliate}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    borderRadius: '7px',
+                    border: 'none',
+                    background: payoutMethod === 'pix' ? 'var(--pink-dark)' : 'transparent',
+                    color: payoutMethod === 'pix' ? '#fff' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <FontAwesomeIcon icon={faMoneyBillTransfer} />
+                  <span>PIX</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayoutMethod('cupom')}
+                  disabled={loadingAffiliate}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    borderRadius: '7px',
+                    border: 'none',
+                    background: payoutMethod === 'cupom' ? 'var(--pink-dark)' : 'transparent',
+                    color: payoutMethod === 'cupom' ? '#fff' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <FontAwesomeIcon icon={faTag} />
+                  <span>CUPOM</span>
+                </button>
+              </div>
+            </div>
+            <div className='form-col-4'>
+              {payoutMethod === 'cupom' ? (
+                <div style={{ marginTop: '28px', fontSize: '12.5px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FontAwesomeIcon icon={faTag} style={{ color: 'var(--pink-dark)', fontSize: '11px' }} />
+                  <span>Retirada em cupom todo dia 10 (não requer chave Pix).</span>
+                </div>
+              ) : (
+                (() => {
+                  const currentPixType = manualPixType || guessPixType(pixKey || "");
+                  const currentPixTypeConfig = PIX_TYPES.find(t => t.value === currentPixType) || PIX_TYPES[3];
 
-                const pixSelector = (
-                  <div
-                    style={{
-                      position: "relative",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "4px 8px 4px 10px",
-                      background: "var(--input-bg)",
-                      borderRadius: "16px",
-                      cursor: "pointer",
-                      color: "var(--text-main)",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      border: "1px solid var(--sidebar-border)",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
-                    }}
-                  >
-                    <FontAwesomeIcon icon={currentPixTypeConfig.icon} style={{ color: "var(--pink-dark)" }} />
-                    <span>{currentPixTypeConfig.label}</span>
-                    <FontAwesomeIcon icon={faChevronDown} style={{ fontSize: "10px", opacity: 0.5 }} />
-                    <select
-                      value={currentPixType}
-                      onChange={(e) => {
-                        const type = e.target.value as any;
-                        setManualPixType(type);
-                        const rawValue = type === "phone" || type === "cpf_cnpj" ? pixKey.replace(/\D/g, "") : pixKey;
-                        const masked = applyPixMask(rawValue, type);
-                        setPixKey(masked);
-                      }}
+                  const pixSelector = (
+                    <div
                       style={{
-                        position: "absolute",
-                        inset: 0,
-                        opacity: 0,
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "4px 8px 4px 10px",
+                        background: "var(--input-bg)",
+                        borderRadius: "16px",
                         cursor: "pointer",
-                        width: "100%",
+                        color: "var(--text-main)",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        border: "1px solid var(--sidebar-border)",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
                       }}
-                      title="Tipo de Chave Pix"
                     >
-                      {PIX_TYPES.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                );
+                      <FontAwesomeIcon icon={currentPixTypeConfig.icon} style={{ color: "var(--pink-dark)" }} />
+                      <span>{currentPixTypeConfig.label}</span>
+                      <FontAwesomeIcon icon={faChevronDown} style={{ fontSize: "10px", opacity: 0.5 }} />
+                      <select
+                        value={currentPixType}
+                        onChange={(e) => {
+                          const type = e.target.value as any;
+                          setManualPixType(type);
+                          const rawValue = type === "phone" || type === "cpf_cnpj" ? pixKey.replace(/\D/g, "") : pixKey;
+                          const masked = applyPixMask(rawValue, type);
+                          setPixKey(masked);
+                        }}
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          opacity: 0,
+                          cursor: "pointer",
+                          width: "100%",
+                        }}
+                        title="Tipo de Chave Pix"
+                      >
+                        {PIX_TYPES.map(t => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
 
-                return (
-                  <Input
-                    label="Chave Pix"
-                    value={pixKey}
-                    onChange={(e) => {
-                      const type = manualPixType || guessPixType(e.target.value);
-                      setPixKey(applyPixMask(e.target.value, type));
-                    }}
-                    placeholder="CPF, e-mail, telefone..."
-                    disabled={loadingAffiliate}
-                    suffix={pixSelector}
-                  />
-                );
-              })()}
+                  return (
+                    <Input
+                      label="Chave Pix"
+                      value={pixKey}
+                      onChange={(e) => {
+                        const type = manualPixType || guessPixType(e.target.value);
+                        setPixKey(applyPixMask(e.target.value, type));
+                      }}
+                      placeholder="CPF, e-mail, telefone..."
+                      disabled={loadingAffiliate}
+                      suffix={pixSelector}
+                    />
+                  );
+                })()
+              )}
             </div>
           </div>
         </section>

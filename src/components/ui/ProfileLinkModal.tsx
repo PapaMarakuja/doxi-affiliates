@@ -7,13 +7,13 @@ import { ProfileCreateModal } from "@/src/components/ui/ProfileCreateModal";
 import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faEnvelope, faPhone } from "@fortawesome/free-solid-svg-icons";
-import type { Profile } from "@/src/types";
+import type { Profile, ProfileWithEmail } from "@/src/types";
 
 interface ProfileLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
   affiliateId: string;
-  onProfileLinked: (profile: Profile) => void;
+  onProfileLinked: (profile: ProfileWithEmail) => void;
 }
 
 export function ProfileLinkModal({
@@ -23,7 +23,7 @@ export function ProfileLinkModal({
   onProfileLinked,
 }: ProfileLinkModalProps) {
   const { addToast } = useToast();
-  const [unlinkedProfiles, setUnlinkedProfiles] = useState<Profile[]>([]);
+  const [unlinkedProfiles, setUnlinkedProfiles] = useState<ProfileWithEmail[]>([]);
   const [loading, setLoading] = useState(false);
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -79,7 +79,7 @@ export function ProfileLinkModal({
     }
   };
 
-  const handleProfileCreated = async (profile: Profile) => {
+  const handleProfileCreated = async (profile: ProfileWithEmail) => {
     // New profile created specifically to be linked to this affiliate
     setShowCreateModal(false);
     // Add to list briefly so handleLink can find it to return to onProfileLinked

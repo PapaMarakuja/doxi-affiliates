@@ -1,13 +1,23 @@
 export function maskPhone(value: string): string {
-  // Always 11 digits: (XX) XXXXX-XXXX
-  let v = value.replace(/\D/g, "").slice(0, 11);
-  if (v.length > 2) {
-    v = `(${v.slice(0, 2)}) ${v.slice(2)}`;
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (!digits) return "";
+  if (digits.length <= 2) {
+    return `(${digits}`;
   }
-  if (v.length > 10) {
-    v = `${v.slice(0, 10)}-${v.slice(10)}`;
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
   }
-  return v;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+}
+
+export function maskInteger(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  const normalized = digits.replace(/^0+(?=\d)/, "");
+  return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
 export function maskCpfCnpj(value: string): string {

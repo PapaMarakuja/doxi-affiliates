@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { createSupabaseServiceClient } from "@/src/lib/supabase/server";
-import type { Affiliate, ApiResponse, Profile } from "@/src/types";
+import type { Affiliate, ApiResponse, Profile, ProfileWithEmail } from "@/src/types";
 import { User } from "@supabase/supabase-js";
 import { getAuthenticatedProfile } from "@/src/lib/auth/session";
 
@@ -21,7 +21,7 @@ export interface CreateUserPayload {
 }
 
 export interface CreateUserResult {
-  profile: Profile;
+  profile: ProfileWithEmail;
   affiliate: Affiliate | null;
 }
 
@@ -158,7 +158,13 @@ export class AuthService {
       }
 
       return {
-        data: { profile: profile as Profile, affiliate },
+        data: {
+          profile: {
+            ...(profile as Profile),
+            email: newAuthUser.user.email ?? payload.email,
+          },
+          affiliate,
+        },
         error: null,
       };
     } catch (error) {

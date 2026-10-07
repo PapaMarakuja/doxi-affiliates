@@ -38,7 +38,12 @@ interface Props {
 }
 
 export default function DashboardLayout({ children, user, profile, affiliate }: Props) {
-  const hasPixOnInitialProfile = profile.role === 'admin' ? true : Boolean(affiliate?.pix_key?.trim());
+  const hasPixOnInitialProfile =
+    profile.role === 'admin'
+      ? true
+      : affiliate?.payout_method === 'cupom'
+      ? true
+      : Boolean(affiliate?.pix_key?.trim());
   const [hasPostLoginFlag] = useState(() => {
     if (typeof window === 'undefined') return false;
     const value = sessionStorage.getItem(POST_LOGIN_FLAG) === '1';

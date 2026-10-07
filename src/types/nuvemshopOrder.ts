@@ -14,8 +14,11 @@ export interface NuvemshopLineItem {
   id: number;
   name: string;
   quantity: number;
-  /** Preço unitário (a Nuvemshop retorna como string, igual à Shopify). */
-  price: string;
+  /**
+   * Preço unitário. A Nuvemshop pode retornar null quando o preço está
+   * definido no nível da variante, não do produto raiz.
+   */
+  price: string | null;
 }
 
 /** Shape esperado da entidade "Order" na API da Nuvemshop. */

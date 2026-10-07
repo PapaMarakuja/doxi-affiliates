@@ -6,3 +6,7 @@ export interface Profile {
   created_at: string;
   temp_password: string | null;
 }
+
+export interface ProfileWithEmail extends Profile {
+  email?: string | null;
+}

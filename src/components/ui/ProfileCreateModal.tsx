@@ -7,7 +7,7 @@ import { Button } from "@/src/components/ui/Button";
 import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRotate, faCopy, faKey, faUser, faAt } from "@fortawesome/free-solid-svg-icons";
-import type { Profile } from "@/src/types";
+import type { Profile, ProfileWithEmail } from "@/src/types";
 import { resolveAuthEmail } from "@/src/lib/auth/usernameResolver";
 
 function generateRandomPassword(length = 20): string {
@@ -38,7 +38,7 @@ function generateRandomPassword(length = 20): string {
 interface ProfileCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProfileCreated: (profile: Profile) => void;
+  onProfileCreated: (profile: ProfileWithEmail) => void;
   createAffiliate?: boolean;
 }
 
@@ -109,7 +109,7 @@ export function ProfileCreateModal({
       }
 
       const result = await res.json();
-      const createdProfile: Profile = result.data;
+      const createdProfile: ProfileWithEmail = result.data;
 
       const successUsername = username.trim().toLowerCase();
       const successPassword = password;

@@ -1,10 +1,11 @@
-import type { Profile } from "@/src/types";
+import type { PayoutMethod, Profile } from "@/src/types";
 
 export interface ProfileValidationErrors {
   name?: string;
   contact_email?: string;
   contact_phone?: string;
   pix_key?: string;
+  payout_method?: string;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -15,6 +16,7 @@ export function validateProfileUpdate(
     contact_email?: string | null;
     contact_phone?: string | null;
     pix_key?: string | null;
+    payout_method?: PayoutMethod | null;
   }
 ): ProfileValidationErrors {
   const errors: ProfileValidationErrors = {};

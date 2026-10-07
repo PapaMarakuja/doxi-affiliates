@@ -24,7 +24,9 @@ export function Button({
   const variantClass = (variant !== "primary" || circle) ? `ui-button--${variant}` : "";
   const outlineClass = outline ? "ui-button--outline" : "";
   const circleClass = circle ? "ui-button--circle" : "";
-  const sizeClass = circle ? `ui-button--${size}` : "";
+  const sizeClass = circle
+    ? `ui-button--${size}`
+    : (size !== "md" ? `ui-button--${size}` : "");
 
   return (
     <button

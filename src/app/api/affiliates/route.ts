@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       profile_id: body.profile_id || null,
       commission_rate: body.commission_rate ?? null,
       pix_key: body.pix_key || null,
+      payout_method: body.payout_method || 'pix',
       contact_phone: body.contact_phone || null,
       contact_email: body.contact_email || null,
     });
