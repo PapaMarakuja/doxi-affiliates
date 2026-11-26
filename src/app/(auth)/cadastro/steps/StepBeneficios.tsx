@@ -70,7 +70,7 @@ export function StepBeneficios() {
               <span className="cad-tool-label">Seu Link de Bio / Stories</span>
               <div className="cad-link-display">
                 <FontAwesomeIcon icon={faLink} className="cad-link-display-icon" />
-                <code className="cad-link-url">doxiwear.com/?coupon=SEUNOME10</code>
+                <code className="cad-link-url">doxiwear.com/discount/SEUNOME10</code>
               </div>
             </div>
           </div>

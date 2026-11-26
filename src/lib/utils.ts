@@ -17,6 +17,11 @@ export function getAffiliateDataStartDate(affiliateCreatedAt: string | null | un
   const startOfMonth = new Date(createdAt.getFullYear(), createdAt.getMonth(), 1);
   return startOfMonth.toISOString();
 }
+/** Nuvemshop coupon link: opening it saves the coupon in the browser and applies it on add-to-cart. */
+export function getAffiliateLink(couponCode: string): string {
+  return `https://doxiwear.com/discount/${encodeURIComponent(couponCode)}`;
+}
+
 export function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 }

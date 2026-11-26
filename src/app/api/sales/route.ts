@@ -46,6 +46,7 @@ export async function GET(request: Request) {
         total_amount,
         total_discounts,
         shipping_cost,
+        cancelled_at,
         order_items (
           product_name,
           variant_label,
@@ -84,6 +85,8 @@ export async function GET(request: Request) {
 
       const isPaid = o.financial_status === "paid";
       const isLiberated = isPaid && daysSinceOrder >= 7;
+      // Sync maps "cancelled before payment" to unpaid; show it as cancelled with no earnings instead of "Aguardando Pagamento".
+      const isCancelledUnpaid = !!o.cancelled_at && o.financial_status === "unpaid";
 
       if (isPaid) {
         totalConversions += 1;
@@ -96,8 +99,8 @@ export async function GET(request: Request) {
       return {
         id: o.external_order_id || o.id,
         created_at: o.created_at,
-        commission: parseFloat(commission.toFixed(2)),
-        status: o.financial_status,
+        commission: isCancelledUnpaid || o.financial_status === "refunded" ? 0 : parseFloat(commission.toFixed(2)),
+        status: isCancelledUnpaid ? "voided" : o.financial_status,
         isLiberated,
         items: (o.order_items || []).map((item) => ({
           product_name: getOrderItemName(item),

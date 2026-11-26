@@ -16,6 +16,7 @@ import {
 import { Affiliate, Coupon } from '@/src/types';
 import { Skeleton } from './Skeleton';
 import { useToast } from '@/src/contexts/ToastContext';
+import { getAffiliateLink } from '@/src/lib/utils';
 import Logo from '@/src/assets/images/doxi-club.png';
 import Image from 'next/image';
 
@@ -162,22 +163,20 @@ export function AffiliateBenefitsModal({ isOpen, onClose }: AffiliateBenefitsMod
                     <div
                       className="benefits-link-display"
                       onClick={() => {
-                        const link = `https://doxiwear.com/?coupon=${featuredCoupon.code}`;
-                        navigator.clipboard.writeText(link);
+                        navigator.clipboard.writeText(getAffiliateLink(featuredCoupon.code));
                         addToast({ message: "Link copiado para a área de transferência!", type: "success" });
                       }}
                     >
-                      <code>doxiwear.com/?coupon={featuredCoupon.code}</code>
+                      <code>doxiwear.com/discount/{featuredCoupon.code}</code>
                       <FontAwesomeIcon icon={faCopy} className="benefits-link-copy-icon" />
                     </div>
                   </div>
 
                   <div className="benefits-cookie-info">
                     <p>
-                      <span className="benefits-cookie-tag">Cookie de 7 dias:</span>
-                      Ao clicar no seu link, seu cupom fica salvo no navegador do cliente por uma semana.
-                      Isso significa que, mesmo que ele saia e volte depois por qualquer outro link da Doxi,
-                      seu cupom será aplicado automaticamente no checkout!
+                      <span className="benefits-cookie-tag">Cupom automático:</span>
+                      Ao clicar no seu link, seu cupom é aplicado automaticamente assim que o cliente
+                      adiciona um produto ao carrinho, sem precisar digitar o código.
                     </p>
                   </div>
                 </div>

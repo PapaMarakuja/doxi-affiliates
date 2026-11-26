@@ -72,6 +72,7 @@ export type OrderWithItems = Pick<
   Orders,
   "id" | "external_order_id" | "created_at" | "financial_status" | "total_amount" | "total_discounts" | "shipping_cost"
 > & {
+  cancelled_at?: string | null;
   coupon_code?: string | null;
   order_items: OrderItemSummary[] | null;
 };

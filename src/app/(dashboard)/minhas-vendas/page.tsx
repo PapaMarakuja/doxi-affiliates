@@ -33,9 +33,10 @@ interface SalesStats {
 }
 
 const getCommissionStatusBadge = (isLiberated: boolean, status: string): { text: string; tone: BadgeTone } => {
-  if (status === "refunded") return { text: "Reembolsado", tone: "info" };
-  if (status === "voided") return { text: "Cancelado", tone: "danger" };
-  if (status !== "paid") return { text: "Aguardando Pagamento", tone: "neutral" };
+  // Labels describe the customer's order, not the affiliate's commission.
+  if (status === "refunded") return { text: "Pedido reembolsado", tone: "neutral" };
+  if (status === "voided") return { text: "Pedido cancelado", tone: "neutral" };
+  if (status !== "paid") return { text: "Cliente ainda não pagou", tone: "neutral" };
   if (!isLiberated) return { text: "A Liberar", tone: "warning" };
   return { text: "Liberado", tone: "success" };
 };
@@ -168,9 +169,9 @@ export default function MinhasVendasPage() {
       header: "Seu Ganho",
       sortable: true,
       render: (item) => (
-        <span className={`flex items-center gap-1.5 font-bold ${item.isLiberated ? "text-success" : "text-warning"}`}>
+        <span className={`flex items-center gap-1.5 font-bold ${item.isLiberated ? "text-success" : item.status === "paid" ? "text-warning" : "text-muted"}`}>
           {formatCurrency(item.commission)}
-          {!item.isLiberated && (
+          {item.status === "paid" && !item.isLiberated && (
             <span title="Saldo a liberar (em garantia)" className="text-xs">
               <FontAwesomeIcon icon={faClockRotateLeft} />
             </span>

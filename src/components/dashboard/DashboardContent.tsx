@@ -31,7 +31,7 @@ import type { DashboardData, Affiliate, Coupon } from '@/src/types';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useToast } from '@/src/contexts/ToastContext';
 import { Card } from '@/src/components/ui/Card';
-import { formatCurrency, formatNumber } from '@/src/lib/utils';
+import { formatCurrency, formatNumber, getAffiliateLink } from '@/src/lib/utils';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -259,8 +259,7 @@ export default function DashboardContent() {
 
   const handleCopyLink = () => {
     if (!featuredCoupon) return;
-    const link = `https://doxiwear.com/?coupon=${featuredCoupon.code}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(getAffiliateLink(featuredCoupon.code));
     addToast({ message: "Link de indicação copiado com sucesso!", type: "success" });
   };
 
@@ -337,10 +336,10 @@ export default function DashboardContent() {
                       Para te ajudar a divulgar e vender mais, criamos um link de indicação personalizado para você!
                     </p>
                     <p>
-                      Quando um cliente clica no seu link, o cupom <strong className="text-brand">{featuredCoupon.code}</strong> é aplicado de forma automática no carrinho de compras.
+                      Quando um cliente clica no seu link, o cupom <strong className="text-brand">{featuredCoupon.code}</strong> é <strong className="text-brand">aplicado automaticamente</strong> assim que ele adiciona um produto ao carrinho, sem precisar digitar nada.
                     </p>
                     <p>
-                      E o melhor: com o nosso <strong className="text-brand">Cookie de 7 dias</strong>, mesmo se ele fechar a loja e comprar em até uma semana, a comissão continua sendo sua!
+                      Toda compra feita com o seu cupom gera comissão para você!
                     </p>
                   </div>
                 </div>
@@ -353,7 +352,7 @@ export default function DashboardContent() {
                     title="Clique para copiar o link"
                   >
                     <code className="dash-link-code-text">
-                      doxiwear.com/?coupon={featuredCoupon.code}
+                      doxiwear.com/discount/{featuredCoupon.code}
                     </code>
                     <button className="dash-link-copy-btn">
                       <FontAwesomeIcon icon={faCopy} />
@@ -362,7 +361,7 @@ export default function DashboardContent() {
                   </div>
                   <div className="dash-link-card-badge">
                     <FontAwesomeIcon icon={faCircleCheck} className="mr-1.5 text-xs" />
-                    Cookie ativo por 7 dias
+                    Cupom aplicado automaticamente
                   </div>
                 </div>
               </div>
