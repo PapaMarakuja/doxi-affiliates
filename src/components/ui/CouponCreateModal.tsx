@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal } from "@/src/components/ui/Modal";
 import { Input } from "@/src/components/ui/Input";
+import { Checkbox } from "@/src/components/ui/Checkbox";
 import { Button } from "@/src/components/ui/Button";
 import { useToast } from "@/src/contexts/ToastContext";
 import type { Coupon } from "@/src/types";
@@ -121,7 +122,7 @@ export function CouponCreateModal({
       zIndex={150}
       closeOnOverlayClick={!saving}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div className="flex flex-col gap-1">
         <Input
           id="form_codigo"
           label="Código do Cupom"
@@ -139,26 +140,17 @@ export function CouponCreateModal({
           value={discountPercentage}
           onChange={(e) => setDiscountPercentage(e.target.value)}
           disabled={saving}
-          suffix={<span style={{ fontSize: "14px", color: "var(--text-muted)" }}>%</span>}
+          suffix={<span className="text-sm text-muted">%</span>}
         />
 
-        <label className="custom-checkbox-wrapper" style={{ marginTop: "4px" }}>
-          <input
-            type="checkbox"
-            className="custom-checkbox"
-            checked={active}
-            onChange={(e) => setActive(e.target.checked)}
-            disabled={saving}
-          />
-          <span className="custom-checkbox-label">Cupom Ativo</span>
-        </label>
+        <Checkbox label="Cupom Ativo" checked={active} onChange={setActive} disabled={saving} className="mb-6 mt-1" />
       </div>
 
-      <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+      <div className="mt-2 flex gap-3">
         <Button
           variant="primary"
           outline
-          style={{ width: "auto", flex: 1 }}
+          className="flex-1"
           onClick={handleClose}
           disabled={saving}
           type="button"
@@ -166,8 +158,7 @@ export function CouponCreateModal({
           Cancelar
         </Button>
         <Button
-          variant="primary"
-          style={{ width: "auto", flex: 1 }}
+          className="flex-1"
           onClick={handleSave}
           loading={saving}
           type="button"

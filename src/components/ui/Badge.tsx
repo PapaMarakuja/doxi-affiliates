@@ -1,42 +1,18 @@
 import React from "react";
+import { cn } from "@/src/lib/utils";
+
+export type BadgeTone = "neutral" | "brand" | "success" | "info" | "warning" | "danger" | "commission";
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode;
-  bg?: string;
-  color?: string;
-  dotColor?: string;
+  tone?: BadgeTone;
+  dot?: boolean;
 }
 
-export function Badge({ children, bg, color, dotColor, style, ...props }: BadgeProps) {
+export function Badge({ children, tone = "neutral", dot = false, className, ...props }: BadgeProps) {
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "4px 10px",
-        borderRadius: "100px",
-        fontSize: "12px",
-        fontWeight: 600,
-        backgroundColor: bg || "var(--hover)",
-        color: color || "var(--text-muted)",
-        width: "fit-content",
-        whiteSpace: "nowrap",
-        ...style,
-      }}
-      {...props}
-    >
-      {dotColor && (
-        <span
-          style={{
-            width: "6px",
-            height: "6px",
-            borderRadius: "50%",
-            backgroundColor: dotColor,
-            flexShrink: 0,
-          }}
-        />
-      )}
+    <span className={cn("ui-badge", tone !== "neutral" && `ui-badge--${tone}`, className)} {...props}>
+      {dot && <span className="ui-badge-dot" />}
       {children}
     </span>
   );

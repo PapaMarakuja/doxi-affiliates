@@ -12,9 +12,6 @@ import {
   faCheck,
   faXmark,
   faShieldHalved,
-  faIdCard,
-  faRandom,
-  faChevronDown,
   faTag,
   faMoneyBillTransfer
 } from "@fortawesome/free-solid-svg-icons";
@@ -27,7 +24,9 @@ import {
   hasValidationErrors,
   type ProfileValidationErrors,
 } from "@/src/lib/profileValidation";
-import { applyPixMask, guessPixType, maskPhone } from "@/src/lib/masks";
+import { maskPhone } from "@/src/lib/masks";
+import { PixKeyInput } from "@/src/components/ui/PixKeyInput";
+import { SegmentedControl, SegmentedOption } from "@/src/components/ui/SegmentedControl";
 
 export type ProfileFormMode = "view" | "edit";
 
@@ -62,13 +61,10 @@ const ROLE_LABELS: Record<Profile["role"], string> = {
   affiliate: "Afiliado",
 };
 
-const PIX_TYPES = [
-  { value: "cpf_cnpj", label: "CPF/CNPJ", icon: faIdCard },
-  { value: "phone", label: "Celular", icon: faPhone },
-  { value: "email", label: "E-mail", icon: faEnvelope },
-  { value: "random", label: "Aleatória", icon: faRandom }
-] as const;
-type PixType = typeof PIX_TYPES[number]["value"];
+const PAYOUT_OPTIONS: SegmentedOption<PayoutMethod>[] = [
+  { value: "pix", label: "PIX", icon: faMoneyBillTransfer },
+  { value: "cupom", label: "Cupom na Loja", icon: faTag },
+];
 
 export function ProfileForm({
   profile,
@@ -85,7 +81,6 @@ export function ProfileForm({
   const [fieldErrors, setFieldErrors] = useState<ProfileValidationErrors>({});
   const { addToast } = useToast();
   const router = useRouter();
-  const [manualPixType, setManualPixType] = useState<PixType | null>(null);
 
   useEffect(() => {
     setCurrentProfile(profile);
@@ -99,9 +94,6 @@ export function ProfileForm({
 
       if (field === "contact_phone") {
         value = maskPhone(value);
-      } else if (field === "pix_key") {
-        const type = manualPixType || guessPixType(value);
-        value = applyPixMask(value, type);
       }
 
       setValues((prev) => ({ ...prev, [field]: value }));
@@ -114,7 +106,6 @@ export function ProfileForm({
   function handleCancel() {
     setValues(toFormValues(currentProfile, currentAffiliate));
     setFieldErrors({});
-    setManualPixType(null);
     setMode("view");
   }
 
@@ -275,139 +266,33 @@ export function ProfileForm({
                 error={fieldErrors.contact_phone}
                 disabled={saving}
               />
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-main)" }}>
-                  Opção de Retirada (todo dia 10)
-                </label>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    background: "var(--hover)",
-                    padding: "3px",
-                    borderRadius: "10px",
-                    border: "1px solid var(--border)",
-                    gap: "4px",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setValues(prev => ({ ...prev, payout_method: "pix" }))}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "8px 12px",
-                      borderRadius: "7px",
-                      border: "none",
-                      background: values.payout_method === "pix" ? "var(--pink-dark)" : "transparent",
-                      color: values.payout_method === "pix" ? "#fff" : "var(--text-muted)",
-                      cursor: "pointer",
-                      fontSize: "12.5px",
-                      fontWeight: 600,
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faMoneyBillTransfer} />
-                    <span>PIX</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setValues(prev => ({ ...prev, payout_method: "cupom" }))}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      padding: "8px 12px",
-                      borderRadius: "7px",
-                      border: "none",
-                      background: values.payout_method === "cupom" ? "var(--pink-dark)" : "transparent",
-                      color: values.payout_method === "cupom" ? "#fff" : "var(--text-muted)",
-                      cursor: "pointer",
-                      fontSize: "12.5px",
-                      fontWeight: 600,
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faTag} />
-                    <span>Cupom na Loja</span>
-                  </button>
-                </div>
-              </div>
+              <SegmentedControl<PayoutMethod>
+                label="Opção de Retirada (todo dia 10)"
+                options={PAYOUT_OPTIONS}
+                value={values.payout_method}
+                onChange={(payout_method) => setValues(prev => ({ ...prev, payout_method }))}
+                disabled={saving}
+              />
 
               {values.payout_method === "cupom" ? (
-                <p style={{ margin: "-2px 0 0", fontSize: "12px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <FontAwesomeIcon icon={faTag} style={{ color: "var(--pink-dark)", fontSize: "11px" }} />
+                <p className="field-note">
+                  <FontAwesomeIcon icon={faTag} />
                   O cupom no valor da sua comissão será enviado todo dia 10.
                 </p>
               ) : (
-                (() => {
-                  const currentPixType = manualPixType || guessPixType(values.pix_key || "");
-                  const currentPixTypeConfig = PIX_TYPES.find(t => t.value === currentPixType) || PIX_TYPES[3];
-
-                  const pixSelector = (
-                    <div
-                      style={{
-                        position: "relative",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: "4px 8px 4px 10px",
-                        background: "var(--input-bg)",
-                        borderRadius: "16px",
-                        cursor: "pointer",
-                        color: "var(--text-main)",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        border: "1px solid var(--sidebar-border)",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
-                      }}
-                    >
-                      <FontAwesomeIcon icon={currentPixTypeConfig.icon} style={{ color: "var(--pink-dark)" }} />
-                      <span>{currentPixTypeConfig.label}</span>
-                      <FontAwesomeIcon icon={faChevronDown} style={{ fontSize: "10px", opacity: 0.5 }} />
-                      <select
-                        value={currentPixType}
-                        onChange={(e) => {
-                          const type = e.target.value as PixType;
-                          setManualPixType(type);
-                          const rawValue = type === "phone" || type === "cpf_cnpj" ? values.pix_key.replace(/\D/g, "") : values.pix_key;
-                          const masked = applyPixMask(rawValue, type);
-                          setValues(prev => ({ ...prev, pix_key: masked }));
-                        }}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          opacity: 0,
-                          cursor: "pointer",
-                          width: "100%",
-                        }}
-                        title="Tipo de Chave Pix"
-                      >
-                        {PIX_TYPES.map(t => (
-                          <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-
-                  return (
-                    <Input
-                      id="profile-pix"
-                      label="Chave Pix"
-                      icon={<FontAwesomeIcon icon={faKey} />}
-                      value={values.pix_key}
-                      onChange={handleChange("pix_key")}
-                      placeholder="CPF, e-mail, telefone..."
-                      error={fieldErrors.pix_key}
-                      disabled={saving}
-                      suffix={pixSelector}
-                      className="pix-input-override"
-                    />
-                  );
-                })()
+                <PixKeyInput
+                  id="profile-pix"
+                  label="Chave Pix"
+                  icon={<FontAwesomeIcon icon={faKey} />}
+                  value={values.pix_key}
+                  onChange={(pix_key) => {
+                    setValues(prev => ({ ...prev, pix_key }));
+                    if (fieldErrors.pix_key) setFieldErrors(prev => ({ ...prev, pix_key: undefined }));
+                  }}
+                  placeholder="CPF, e-mail, telefone..."
+                  error={fieldErrors.pix_key}
+                  disabled={saving}
+                />
               )}
             </>
           )}

@@ -12,7 +12,6 @@ export function Textarea({
   error,
   id,
   className = "",
-  style,
   ...props
 }: TextareaProps) {
   return (
@@ -22,16 +21,15 @@ export function Textarea({
           {label}
         </label>
       )}
-      <div className="input-wrapper" style={{ alignItems: "flex-start" }}>
-        {icon && <span className="input-icon" style={{ top: "16px" }}>{icon}</span>}
+      <div className="input-wrapper input-wrapper--textarea">
+        {icon && <span className="input-icon">{icon}</span>}
         <textarea
           id={id}
           className={`input-field ${icon ? "input-has-icon" : ""} ${error ? "input-error-state" : ""} ${className}`}
-          style={{ minHeight: "120px", resize: "vertical", paddingTop: "14px", ...style }}
           {...props}
         />
       </div>
-      {error && <span className="input-error" style={{ color: "var(--error-text)", fontSize: "12px" }}>{error}</span>}
+      {error && <span className="input-error">{error}</span>}
     </div>
   );
 }

@@ -1,0 +1,115 @@
+:root {
+  --pink-light: #F5B8BF;
+  --pink-dark: #F1A4AC;
+  --cream: #F9E4E0;
+  --navy: #204457;
+
+  --bg-gradient: linear-gradient(180deg, #FDF5F4 0%, var(--cream) 100%);
+  --bg-page: #F4EBE8;
+  --card-bg: #FFFFFF;
+  --card-shadow: 0 4px 30px rgba(32, 68, 87, 0.08);
+
+  --text-main: #1E3448;
+  --text-muted: #6B7C8D;
+
+  --input-bg: #EEF3F8;
+  --input-placeholder: #A0B0BC;
+  --input-icon: #8FA0AE;
+
+  --border-radius: 12px;
+  --card-radius: 16px;
+  --error-color: #e05151;
+  --error-text: #c93a3a;
+
+  /* Table / generic tokens */
+  --border: #E8DDD9;
+  --background: #FFFFFF;
+  --hover: rgba(245, 184, 191, 0.08);
+  --text: #1E3448;
+
+  --sidebar-bg: #FFFFFF;
+  --sidebar-text: #1E3448;
+  --sidebar-text-muted: #6B7C8D;
+  --sidebar-hover: rgba(245, 184, 191, 0.15);
+  --sidebar-active-bg: rgba(245, 184, 191, 0.25);
+  --sidebar-active-text: var(--navy);
+  --sidebar-border: #EAE0DC;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --header-border: #EAE0DC;
+
+  --dropdown-bg: #FFFFFF;
+  --dropdown-hover: #F6EFEC;
+  --dropdown-shadow: 0 8px 40px rgba(32, 68, 87, 0.12);
+
+  --success: #22c55e;
+  --success-hover: #16a34a;
+  --info: #3b82f6;
+  --info-hover: #2563eb;
+  --warning: #f59e0b;
+  --warning-hover: #d97706;
+  --error: #ef4444;
+  --error-hover: #dc2626;
+  --primary: var(--info);
+
+  /* Commission colors (Default: Sky Blue) */
+  --commission-color: #0284c7;
+  --commission-bg: rgba(2, 132, 199, 0.08);
+}
+
+
+.dark {
+  /* Backgrounds — mais escuros e contrastantes */
+  --bg-gradient: linear-gradient(180deg, #090E1A 0%, #111827 100%);
+  --bg-page: #090E1A;
+  --card-bg: #131C2E;
+  --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.65);
+
+  /* Texto base pastel — #E0E0E0 conforme solicitado */
+  --text-main: #E0E0E0;
+  --text-muted: #7A8FA3;
+
+  --input-bg: #0D1525;
+  --input-placeholder: #3D5166;
+  --input-icon: #4E6478;
+
+  --error-color: #f87171;
+  --error-text: #FCA5A5;
+
+  /* Table / generic tokens */
+  --border: #1E2D42;
+  --background: #131C2E;
+  --hover: rgba(241, 164, 172, 0.06);
+  --text: #E0E0E0;
+
+  --sidebar-bg: #111827;
+  --sidebar-text: #D4DEE8;
+  --sidebar-text-muted: #4E6478;
+  --sidebar-hover: rgba(241, 164, 172, 0.09);
+  --sidebar-active-bg: rgba(241, 164, 172, 0.16);
+  --sidebar-active-text: #F0C8CC;
+  --sidebar-border: #1E2D42;
+
+  --header-bg: rgba(13, 21, 37, 0.92);
+  --header-border: #1E2D42;
+
+  --dropdown-bg: #131C2E;
+  --dropdown-hover: #1A2640;
+  --dropdown-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+
+  --success: #4ade80;
+  --success-hover: #22c55e;
+  --info: #60a5fa;
+  --info-hover: #3b82f6;
+  --warning: #fbbf24;
+  --warning-hover: #f59e0b;
+  --error: #f87171;
+  --error-hover: #ef4444;
+
+  /* Commission colors (Default: Sky Blue - Dark Mode) */
+  --commission-color: #38bdf8;
+  --commission-bg: rgba(56, 189, 248, 0.12);
+}
+

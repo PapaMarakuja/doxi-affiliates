@@ -33,6 +33,12 @@ export interface IStoreService {
    * @param externalOrderId - ID do pedido na plataforma (Shopify ou Nuvemshop).
    */
   getOrderById(externalOrderId: string): Promise<NormalizedOrder | null>;
+
+  /**
+   * Busca o link público dos produtos informados (para salvar em `products.url`).
+   * @returns Map external_product_id → url. Produtos sem link ficam fora do Map.
+   */
+  getProductUrls(externalProductIds: string[]): Promise<Map<string, string>>;
 }
 
 /**
@@ -63,7 +69,13 @@ export interface NormalizedOrder {
 }
 
 export interface NormalizedLineItem {
-  title: string;
+  /** ID do produto na plataforma (null quando o produto foi removido da loja). */
+  externalProductId: string | null;
+  /** Nome do produto, sem a variante. */
+  productName: string;
+  /** Variante comprada, ex.: "M" ou "Azul / G". */
+  variantLabel: string | null;
+  imageUrl: string | null;
   quantity: number;
   price: string;
 }

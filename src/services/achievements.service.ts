@@ -1,8 +1,8 @@
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/src/lib/supabase/server";
 import { AuthService } from "./auth.service";
 import type { ApiResponse } from "@/src/types";
-import type { AchievementDefinition, AffiliateAchievement } from "@/src/types/achievements";
-import { getAffiliateDataStartDate } from "@/src/lib/utils";
+import type { AchievementDefinition, AffiliateAchievement, AffiliateAchievementWithAffiliate } from "@/src/types/achievements";
+import { calculateOrderCommission, getAffiliateDataStartDate } from "@/src/lib/utils";
 
 type ClaimByAchievementInput = {
   affiliateId: string;
@@ -36,10 +36,10 @@ export class AchievementsService {
       return { data: null, error: affError.message };
     }
 
-    return { data: affiliateAchievements, error: null };
+    return { data: affiliateAchievements as AffiliateAchievementWithAffiliate[], error: null };
   }
 
-  async getAllAffiliateAchievements(affiliateId?: string): Promise<ApiResponse<any[]>> {
+  async getAllAffiliateAchievements(affiliateId?: string): Promise<ApiResponse<AffiliateAchievementWithAffiliate[]>> {
     const supabase = await createSupabaseServerClient();
 
     let query = supabase
@@ -115,7 +115,7 @@ export class AchievementsService {
     return { data: { success: true }, error: null };
   }
 
-  async claimReward(achievementRowId: string): Promise<ApiResponse<any>> {
+  async claimReward(achievementRowId: string): Promise<ApiResponse<AffiliateAchievement>> {
     const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase.rpc("claim_achievement_reward", {
@@ -123,13 +123,13 @@ export class AchievementsService {
     });
 
     if (error) return { data: null, error: error.message };
-    return { data, error: null };
+    return { data: data as AffiliateAchievement, error: null };
   }
 
   async claimRewardByAchievement({
     affiliateId,
     achievementId
-  }: ClaimByAchievementInput): Promise<ApiResponse<any>> {
+  }: ClaimByAchievementInput): Promise<ApiResponse<AffiliateAchievement>> {
     const definitionResult = await this.getAchievementDefinitionById(achievementId);
     if (definitionResult.error) return { data: null, error: definitionResult.error };
     if (!definitionResult.data) return { data: null, error: "Conquista não encontrada." };
@@ -145,8 +145,6 @@ export class AchievementsService {
     if (metricResult.error) return { data: null, error: metricResult.error };
 
     const metricValue = metricResult.data ?? 0;
-    console.log('🐒 - metricResult.data:', metricResult.data);
-    console.log('🐒 - metricValue:', metricValue);
     if (metricValue < definition.goal) {
       return { data: null, error: "Meta ainda não foi atingida para esta conquista." };
     }
@@ -270,15 +268,7 @@ export class AchievementsService {
 
     if (params.metric === "total_commission") {
       const rate = Number(affiliateBase.commission_rate ?? 0);
-      const totalCommission = paidOrders.reduce((acc, order) => {
-        const base =
-          Number(order.total_amount || 0) -
-          Number(order.total_discounts || 0) -
-          Number(order.shipping_cost || 0);
-
-        if (base <= 0 || rate <= 0) return acc;
-        return acc + base * (rate / 100);
-      }, 0);
+      const totalCommission = paidOrders.reduce((acc, order) => acc + calculateOrderCommission(order, rate), 0);
 
       return { data: Number(totalCommission.toFixed(2)), error: null };
     }
@@ -354,7 +344,7 @@ export class AchievementsService {
     affiliateId: string;
     achievementId: string;
     valueAtUnlock: number;
-  }): Promise<ApiResponse<any>> {
+  }): Promise<ApiResponse<AffiliateAchievement>> {
     const supabase = await createSupabaseServiceClient();
 
     const { data: createdRow, error: createError } = await supabase

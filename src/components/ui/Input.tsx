@@ -64,19 +64,12 @@ export function Input({
             className="input-password-toggle input-suffix"
             onClick={() => setShowPassword(!showPassword)}
             tabIndex={-1}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--input-icon)",
-              cursor: "pointer",
-              padding: "4px"
-            }}
           >
             <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
           </button>
         )}
       </div>
-      {error && <span className="input-error" style={{ color: "var(--error-text)", fontSize: "12px" }}>{error}</span>}
+      {error && <span className="input-error">{error}</span>}
     </div>
   );
 }

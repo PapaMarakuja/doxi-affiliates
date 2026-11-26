@@ -10,6 +10,7 @@ import {
   faGift,
   faFolderOpen,
   faTrophy,
+  faBell,
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 
@@ -25,4 +26,5 @@ export const iconMap: Record<string, IconDefinition> = {
   faGift,
   faFolderOpen,
   faTrophy,
+  faBell,
 };

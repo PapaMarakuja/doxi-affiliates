@@ -22,7 +22,8 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/afiliados': 'Afiliados',
   '/cupons': 'Cupons',
-  '/comissoes': 'Comissões',
+  '/gestao-pagamentos': 'Gestão de Pagamentos',
+  '/notificacoes': 'Notificações',
   '/suporte': 'Suporte',
   '/gerenciar-conquistas': 'Conquistas',
   '/brindes': 'Brindes',
@@ -66,7 +67,8 @@ export default function DashboardLayout({ children, user, profile, affiliate }: 
     setDisplayAffiliate(affiliate);
   }, [affiliate]);
   const pathname = usePathname();
-  const pageTitle = pageTitles[pathname] || 'Dashboard';
+  // Sub-routes (e.g. /afiliados/123) inherit their section title.
+  const pageTitle = Object.entries(pageTitles).find(([route]) => pathname === route || pathname.startsWith(`${route}/`))?.[1] || 'Dashboard';
 
   useEffect(() => {
     document.title = `Doxi | ${pageTitle}`;

@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from "@/src/lib/auth/session";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
+import { calculateOrderCommission } from "@/src/lib/utils";
 import type { Coupon, Orders, Affiliate } from "@/src/types";
 
 export interface CouponStats {
@@ -27,22 +28,6 @@ export interface CouponsPageData {
     monthlyDiscount: number;
     monthlyCommission: number;
   };
-}
-
-/**
- * Calcula a comissão do afiliado com base nas orders.
- *
- * Base de cálculo: total_amount - total_discounts - shipping_cost
- * Comissão = base × (commission_rate / 100)
- */
-function calcCommission(
-  order: Pick<Orders, "total_amount" | "shipping_cost">,
-  commissionRate: number | null
-): number {
-  if (!commissionRate || commissionRate <= 0) return 0;
-  const base = order.total_amount - (order.shipping_cost ?? 0);
-  if (base <= 0) return 0;
-  return base * (commissionRate / 100);
 }
 
 /**
@@ -83,7 +68,7 @@ export async function GET(req: Request) {
       ...new Set(typedCoupons.map((c) => c.affiliate_id).filter(Boolean)),
     ];
 
-    let affiliateMap = new Map<string, Affiliate>();
+    const affiliateMap = new Map<string, Affiliate>();
 
     if (affiliateIds.length > 0) {
       const { data: affiliates } = await supabase
@@ -170,7 +155,7 @@ export async function GET(req: Request) {
         0
       );
       const totalCommission = matchedOrders.reduce(
-        (acc, o) => acc + calcCommission(o, commissionRate),
+        (acc, o) => acc + calculateOrderCommission(o, commissionRate ?? 0),
         0
       );
 
@@ -187,7 +172,7 @@ export async function GET(req: Request) {
         0
       );
       const monthlyCommission = monthlyOrders.reduce(
-        (acc, o) => acc + calcCommission(o, commissionRate),
+        (acc, o) => acc + calculateOrderCommission(o, commissionRate ?? 0),
         0
       );
 

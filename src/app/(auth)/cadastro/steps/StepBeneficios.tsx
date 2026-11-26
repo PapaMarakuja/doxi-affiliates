@@ -106,8 +106,8 @@ export function StepBeneficios() {
           </div>
 
           {/* Destaque de Pagamento todo dia 10: PIX ou Cupom */}
-          <div className="cad-growth-callout" style={{ borderColor: 'rgba(245, 184, 191, 0.4)', background: 'rgba(245, 184, 191, 0.1)' }}>
-            <FontAwesomeIcon icon={faCalendarCheck} className="cad-growth-callout-icon" style={{ color: 'var(--pink-dark)' }} />
+          <div className="cad-growth-callout cad-growth-callout--brand">
+            <FontAwesomeIcon icon={faCalendarCheck} className="cad-growth-callout-icon" />
             <div>
               <strong>Pagamentos todo dia 10: PIX ou Cupom!</strong>
               <p>

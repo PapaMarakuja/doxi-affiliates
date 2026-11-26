@@ -35,16 +35,7 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <span style={{
-          display: "inline-block",
-          width: "18px",
-          height: "18px",
-          border: "2px solid rgba(32, 68, 87, 0.2)",
-          borderTopColor: "currentColor",
-          borderRadius: "50%",
-          animation: "spin 1s infinite linear",
-          marginRight: circle ? "0" : "8px"
-        }} />
+        <span className="ui-button-spinner" />
       ) : null}
       {(!loading || !circle) && children}
     </button>

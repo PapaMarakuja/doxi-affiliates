@@ -6,8 +6,11 @@ import { Button } from "@/src/components/ui/Button";
 import { ProfileCreateModal } from "@/src/components/ui/ProfileCreateModal";
 import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faEnvelope, faPhone } from "@fortawesome/free-solid-svg-icons";
-import type { Profile, ProfileWithEmail } from "@/src/types";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import type { ProfileWithEmail } from "@/src/types";
+import { Table } from "@/src/components/ui/Table";
+import { Badge } from "@/src/components/ui/Badge";
+import { returnRole } from "@/src/lib/utils";
 
 interface ProfileLinkModalProps {
   isOpen: boolean;
@@ -97,131 +100,55 @@ export function ProfileLinkModal({
         size="md"
         id="profile-link-modal"
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Button
-              variant="primary"
-              style={{ width: "auto" }}
-              onClick={() => setShowCreateModal(true)}
-              type="button"
-            >
-              <FontAwesomeIcon icon={faPlus} style={{ marginRight: "6px" }} />
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-end">
+            <Button className="w-auto px-5" onClick={() => setShowCreateModal(true)} type="button">
+              <FontAwesomeIcon icon={faPlus} />
               Cadastrar Novo Perfil
             </Button>
           </div>
 
-          {loading ? (
-            <div
-              style={{
-                padding: "2rem",
-                textAlign: "center",
-                color: "var(--text-muted)",
-              }}
-            >
-              Carregando perfis...
-            </div>
-          ) : unlinkedProfiles.length === 0 ? (
-            <div
-              style={{
-                padding: "2rem",
-                textAlign: "center",
-                color: "var(--text-secondary, var(--text-muted))",
-                border: "1px dashed var(--border)",
-                borderRadius: "8px",
-              }}
-            >
-              Nenhum perfil disponível para vinculação.
-            </div>
+          {!loading && unlinkedProfiles.length === 0 ? (
+            <div className="empty-dashed">Nenhum perfil disponível para vinculação.</div>
           ) : (
-            <div
-              style={{
-                overflowX: "auto",
-                borderRadius: "12px",
-                border: "1px solid var(--border)",
-                background: "var(--card-bg)",
-              }}
-            >
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  textAlign: "left",
-                }}
-              >
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: "1px solid var(--border)",
-                      background: "var(--hover)",
-                    }}
-                  >
-                    <th className="table-th-text" style={thStyle}>
-                      Nome
-                    </th>
-                    <th className="table-th-text" style={thStyle}>
-                      Role
-                    </th>
-                    <th className="table-th-text" style={{ ...thStyle, textAlign: "center" }}>
-                      Ação
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unlinkedProfiles.map((profile) => (
-                    <tr
-                      key={profile.id}
-                      className="table-row-hover"
-                      style={{
-                        borderBottom: "1px solid var(--border)",
-                        transition: "background 0.2s",
-                      }}
+            <Table
+              data={unlinkedProfiles}
+              loading={loading}
+              compact
+              hidePagination={unlinkedProfiles.length <= 10}
+              columns={[
+                {
+                  key: "name",
+                  header: "Nome",
+                  render: (profile) => <span className="font-semibold">{profile.name}</span>,
+                },
+                {
+                  key: "role",
+                  header: "Role",
+                  render: (profile) => (
+                    <Badge tone={profile.role === "admin" ? "info" : "brand"}>{returnRole(profile.role)}</Badge>
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "Ação",
+                  style: { width: "1%", textAlign: "center" },
+                  render: (profile) => (
+                    <Button
+                      outline
+                      size="sm"
+                      className="w-auto"
+                      onClick={() => handleLink(profile.id)}
+                      loading={linkingId === profile.id}
+                      disabled={linkingId !== null}
+                      type="button"
                     >
-                      <td style={tdStyle}>
-                        <span style={{ fontWeight: 600 }}>
-                          {profile.name}
-                        </span>
-                      </td>
-                      <td style={tdStyle}>
-                        <span
-                          style={{
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            padding: "3px 10px",
-                            borderRadius: "20px",
-                            background: profile.role === "admin"
-                              ? "rgba(59, 130, 246, 0.12)"
-                              : "rgba(245, 184, 191, 0.25)",
-                            color: profile.role === "admin"
-                              ? "var(--info)"
-                              : "var(--pink-dark)",
-                          }}
-                        >
-                          {profile.role}
-                        </span>
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: "center" }}>
-                        <Button
-                          variant="primary"
-                          outline
-                          style={{
-                            width: "auto",
-                            padding: "8px 16px",
-                            fontSize: "13px",
-                            minHeight: "unset",
-                          }}
-                          onClick={() => handleLink(profile.id)}
-                          loading={linkingId === profile.id}
-                          disabled={linkingId !== null}
-                          type="button"
-                        >
-                          Vincular
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      Vincular
+                    </Button>
+                  ),
+                },
+              ]}
+            />
           )}
         </div>
       </Modal>
@@ -235,18 +162,3 @@ export function ProfileLinkModal({
     </>
   );
 }
-
-const thStyle: React.CSSProperties = {
-  padding: "14px 16px",
-  fontWeight: 600,
-  color: "var(--text-muted)",
-  fontSize: "12px",
-  textTransform: "uppercase",
-  letterSpacing: "0.5px",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "14px 16px",
-  color: "var(--text-main)",
-  fontSize: "14px",
-};

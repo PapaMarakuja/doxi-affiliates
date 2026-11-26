@@ -117,8 +117,8 @@ export default function AfiliadosPage() {
       sortable: true,
       render: (item) => (
         <div>
-          <div style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.name}</div>
-          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+          <div className="font-semibold text-main">{item.name}</div>
+          <div className="mt-0.5 text-xs text-muted">
             PIX: {item.pix_key || "Não cadastrada"}
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function AfiliadosPage() {
       sortable: false,
       render: (item) => {
         const firstCoupon = item.coupons?.[0];
-        if (!firstCoupon) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+        if (!firstCoupon) return <span className="text-muted">—</span>;
         return (
           <div
             onClick={(e) => {
@@ -139,42 +139,11 @@ export default function AfiliadosPage() {
               addToast({ message: `Cupom "${firstCoupon.code}" copiado!`, type: "success" });
             }}
             title="Clique para copiar"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '5px 12px',
-              borderRadius: '8px',
-              background: 'var(--hover)',
-              border: '1px dashed var(--pink-dark)',
-              color: 'var(--text-main)',
-              fontWeight: 700,
-              fontSize: '13px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-              cursor: 'pointer',
-              transition: 'transform 0.15s, border-color 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.borderColor = "var(--pink-light)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = "var(--pink-dark)";
-            }}
+            className="coupon-chip"
           >
-            <FontAwesomeIcon icon={faTag} style={{ fontSize: '10px', color: 'var(--pink-dark)' }} />
-            <span style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>{firstCoupon.code}</span>
-            <span style={{
-              background: 'var(--pink-dark)',
-              color: '#fff',
-              padding: '2px 8px',
-              borderRadius: '6px',
-              fontSize: '11px',
-              fontWeight: 800
-            }}>
-              {firstCoupon.discount_percentage}%
-            </span>
+            <FontAwesomeIcon icon={faTag} />
+            <span className="coupon-chip-code">{firstCoupon.code}</span>
+            <span className="coupon-chip-badge">{firstCoupon.discount_percentage}%</span>
           </div>
         );
       }
@@ -202,7 +171,7 @@ export default function AfiliadosPage() {
             onClick={() => router.push(`/afiliados/${item.id}`)}
             title="Editar Afiliado"
           >
-            <FontAwesomeIcon icon={faPen} style={{ fontSize: "13px" }} />
+            <FontAwesomeIcon icon={faPen} className="text-[13px]" />
           </Button>
 
           <Button
@@ -211,7 +180,7 @@ export default function AfiliadosPage() {
             onClick={() => handleDelete(item)}
             title="Excluir Afiliado"
           >
-            <FontAwesomeIcon icon={faTrash} style={{ fontSize: "13px" }} />
+            <FontAwesomeIcon icon={faTrash} className="text-[13px]" />
           </Button>
         </div>
       )
@@ -220,17 +189,13 @@ export default function AfiliadosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-between items-center" style={{ marginBottom: "8px" }}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="page-title">Gestão de Afiliados</h2>
           <p className="page-subtitle">Consulte, cadastre e gerencie a comissão, cupons e vínculos dos afiliados da plataforma.</p>
         </div>
         <Button
-          variant="primary"
-          style={{
-            width: "auto",
-            display: "flex",
-          }}
+          className="w-auto gap-2 px-6"
           onClick={() => router.push("/afiliados/novo")}
         >
           <FontAwesomeIcon icon={faPlus} />
@@ -238,22 +203,21 @@ export default function AfiliadosPage() {
         </Button>
       </div>
 
-      <Card style={{ padding: "24px", borderRadius: "16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: "12px", flex: 1, maxWidth: "480px" }}>
+      <Card className="p-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex max-w-[480px] flex-1 gap-3 [&_.input-field-container]:mb-0">
             <Input
               placeholder="Buscar por afiliado ou PIX..."
               value={searchName}
               onChange={(e) => handleSearchInputChange(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              icon={<FontAwesomeIcon icon={faSearch} onClick={handleSearch} style={{ cursor: "pointer" }} />}
-              style={{ margin: 0 }}
+              icon={<FontAwesomeIcon icon={faSearch} onClick={handleSearch} className="cursor-pointer" />}
             />
           </div>
           {appliedSearchName && (
             <Button
               variant="transparent"
-              style={{ width: "auto", fontSize: "13px", color: "var(--pink-dark)", padding: "0 8px" }}
+              size="sm" className="w-auto text-brand"
               onClick={() => {
                 setSearchName("");
                 setPage(1);

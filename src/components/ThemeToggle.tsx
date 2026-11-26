@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
 
@@ -42,6 +42,8 @@ function getThemeSnapshot(): boolean {
   return document.documentElement.classList.contains("dark");
 }
 
+const subscribeNothing = () => () => {};
+
 function getServerThemeSnapshot(): boolean {
   return false;
 }
@@ -51,11 +53,8 @@ export default function ThemeToggle({
   variant = "sidebar",
   className = "",
 }: ThemeToggleProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // true only on the client, after hydration (avoids theme icon mismatch).
+  const mounted = useSyncExternalStore(subscribeNothing, () => true, () => false);
 
   const isDark = useSyncExternalStore(
     subscribeTheme,

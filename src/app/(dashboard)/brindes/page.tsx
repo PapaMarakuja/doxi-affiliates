@@ -10,19 +10,12 @@ import {
   faGift,
   faLock,
   faLockOpen,
-  faTrophy,
   faMedal,
-  faStar,
   faCrown,
   faCheckCircle,
-  faCalendarCheck,
-  faBolt,
   faBagShopping,
-  faRocket,
-  faBullseye,
   faChartLine,
   faSackDollar,
-  faQuestionCircle,
 } from '@fortawesome/free-solid-svg-icons';
 import type {
   AchievementDefinition,
@@ -32,24 +25,21 @@ import {
   ACHIEVEMENT_METRIC_LABELS,
   REWARD_TYPE_LABELS,
 } from '@/src/lib/achievements/achievementMappings';
-import { useToast } from '@/src/contexts/ToastContext';
+import { useToast } from "@/src/contexts/ToastContext";
+import { getAchievementIcon } from "@/src/lib/achievements/iconMap";
+import { cn, formatCurrency, formatNumber } from "@/src/lib/utils";
+import { Badge } from "@/src/components/ui/Badge";
 
-const ICON_MAP: Record<string, any> = {
-  faStar,
-  faBolt,
-  faCalendarCheck,
-  faRocket,
-  faBagShopping,
-  faBullseye,
-  faMedal,
-  faTrophy,
-  faCrown,
-  faGift,
-};
+interface SaleSummary {
+  status: string;
+  created_at: string;
+  commission: number;
+}
 
-const getIcon = (key: string | null) => {
-  return key && ICON_MAP[key] ? ICON_MAP[key] : faGift;
-};
+
+// Achievement color comes from the DB, so it is passed as a CSS variable.
+const rewardColorStyle = (colorHex: string | null | undefined) =>
+  ({ "--reward-color": colorHex || "var(--info)" }) as React.CSSProperties;
 
 export default function BrindesPage() {
   const [metrics, setMetrics] = useState({
@@ -94,7 +84,7 @@ export default function BrindesPage() {
           let mComm = 0;
           let mConv = 0;
 
-          sales.forEach((s: any) => {
+          sales.forEach((s: SaleSummary) => {
             if (s.status === 'paid') {
               const date = new Date(s.created_at);
               if (date >= cycleStartDate) {
@@ -130,10 +120,6 @@ export default function BrindesPage() {
     fetchData();
   }, []);
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
-  const formatNumber = (val: number) => new Intl.NumberFormat('pt-BR').format(val);
   const formatRewardValue = (reward: AchievementDefinition) => {
     if (reward.reward_type === 'bonus_cash') {
       return formatCurrency(reward.reward_value || 0);
@@ -147,33 +133,6 @@ export default function BrindesPage() {
     }
 
     return 'Medalha/Brinde exclusivo';
-  };
-
-  const getRewardStyles = (rewardType: AchievementDefinition['reward_type']) => {
-    if (rewardType === 'bonus_cash') {
-      return {
-        icon: faSackDollar,
-        background: 'rgba(46, 204, 113, 0.12)',
-        borderColor: 'rgba(46, 204, 113, 0.25)',
-        accent: '#1f8f4d',
-      };
-    }
-
-    if (rewardType === 'coupon') {
-      return {
-        icon: faBagShopping,
-        background: 'rgba(33, 150, 243, 0.12)',
-        borderColor: 'rgba(33, 150, 243, 0.25)',
-        accent: '#1e6fbf',
-      };
-    }
-
-    return {
-      icon: faMedal,
-      background: 'rgba(241, 196, 15, 0.14)',
-      borderColor: 'rgba(241, 196, 15, 0.28)',
-      accent: '#a97700',
-    };
   };
 
   const { addToast } = useToast();
@@ -275,6 +234,7 @@ export default function BrindesPage() {
     });
   };
 
+
   const renderRewardCard = (reward: AchievementDefinition, isMonthly: boolean) => {
     const currentValue = isMonthly
       ? reward.metric === 'cycle_conversions'
@@ -287,7 +247,6 @@ export default function BrindesPage() {
     const isUnlocked = currentValue >= reward.goal;
     const progress = Math.min(100, (currentValue / reward.goal) * 100);
     const isCurrency = reward.metric.includes('commission');
-    const color = reward.color_hex || '#2196f3';
 
     const isEligibleForMystery =
       !isMonthly &&
@@ -301,227 +260,108 @@ export default function BrindesPage() {
         a.achievement_id.toString() === reward.id
     );
     const isClaimed = affAch?.reward_claimed || false;
-    const rewardStyles = getRewardStyles(reward.reward_type);
-    const rewardLabel = REWARD_TYPE_LABELS[reward.reward_type];
-    const rewardValue = formatRewardValue(reward);
+    const prizeIcon = reward.reward_type === 'bonus_cash'
+      ? faSackDollar
+      : reward.reward_type === 'coupon'
+        ? faBagShopping
+        : faMedal;
 
     return (
       <Card
         key={reward.id}
-        style={{
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          overflow: 'hidden',
-          border: isUnlocked ? `1px solid ${color}40` : '1px solid var(--border)',
-          boxShadow: isUnlocked ? `0 8px 24px ${color}15` : 'none',
-          opacity: isUnlocked ? 1 : 0.8,
-        }}
+        className={cn('reward-card', isUnlocked && 'reward-card--unlocked')}
+        style={rewardColorStyle(reward.color_hex)}
       >
-        {/* Badge de Status */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            background: isUnlocked ? `${color}15` : 'var(--hover)',
-            color: isUnlocked ? color : 'var(--text-muted)',
-            padding: '4px 10px',
-            borderRadius: '100px',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            zIndex: 2,
-          }}
-        >
+        <Badge className="reward-status">
           <FontAwesomeIcon icon={isUnlocked ? faLockOpen : faLock} />
           {isClaimed ? 'Resgatado' : isUnlocked ? 'Liberado!' : 'A Caminho'}
-        </div>
+        </Badge>
 
-        {/* Mistério Overlay */}
         {isMystery && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '40%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: '64px',
-              color: 'var(--text-muted)',
-              opacity: 0.3,
-              zIndex: 1,
-            }}
-          >
+          <div className="reward-mystery">
             <FontAwesomeIcon icon={faGift} />
           </div>
         )}
 
-        {/* Conteúdo com Blur (se distante) */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            filter: isMystery ? 'blur(6px)' : 'none',
-            transition: 'filter 0.3s ease',
-            userSelect: isMystery ? 'none' : 'auto',
-            zIndex: 2,
-          }}
-        >
-          {/* Ícone */}
-          <div
-            style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: isUnlocked ? `${color}15` : 'var(--hover)',
-              color: isUnlocked ? color : 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-              marginBottom: '20px',
-              transition: 'transform 0.3s ease',
-              transform: isUnlocked ? 'scale(1.1)' : 'scale(1)',
-              flexShrink: 0,
-            }}
-          >
-            <FontAwesomeIcon icon={getIcon(reward.icon_key)} />
+        <div className={cn('reward-body', isMystery && 'reward-body--blurred')}>
+          <div className="reward-icon">
+            <FontAwesomeIcon icon={getAchievementIcon(reward.icon_key)} />
           </div>
 
-          <h4
-            style={{ margin: '0 0 8px 0', fontSize: '18px', color: 'var(--text-main)' }}
-          >
-            {reward.title}
-          </h4>
-          <p
-            style={{
-              margin: '0 0 16px 0',
-              fontSize: '14px',
-              color: 'var(--text-muted)',
-            }}
-          >
-            {reward.description}
-          </p>
-          <div
-            style={{
-              marginBottom: '16px',
-              border: `1px solid ${rewardStyles.borderColor}`,
-              background: rewardStyles.background,
-              borderRadius: '10px',
-              padding: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-            }}
-          >
-            <div
-              style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.65)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: rewardStyles.accent,
-                flexShrink: 0,
-              }}
-            >
-              <FontAwesomeIcon icon={rewardStyles.icon} />
+          <h4 className="mb-2 text-lg font-bold text-main">{reward.title}</h4>
+          <p className="mb-4 text-sm text-muted">{reward.description}</p>
+
+          <div className={`reward-prize reward-prize--${reward.reward_type}`}>
+            <div className="reward-prize-icon">
+              <FontAwesomeIcon icon={prizeIcon} />
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.2 }}
-              >
-                Recompensa: {rewardLabel}
+            <div className="min-w-0">
+              <div className="text-xs leading-tight text-muted">
+                Recompensa: {REWARD_TYPE_LABELS[reward.reward_type]}
               </div>
-              <div
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  color: rewardStyles.accent,
-                  lineHeight: 1.2,
-                }}
-              >
-                {rewardValue}
-              </div>
+              <div className="reward-prize-value">{formatRewardValue(reward)}</div>
             </div>
           </div>
         </div>
 
-        <div style={{ marginTop: 'auto', zIndex: 2 }}>
+        <div className="relative z-[2] mt-auto">
           {isUnlocked && !isClaimed ? (
             <Button
-              style={{
-                width: '100%',
-                background: color,
-                borderColor: color,
-                color: '#fff',
-              }}
+              className="reward-claim-btn gap-2"
               onClick={() => handleClaim(reward)}
               loading={claimingRewardId === reward.id}
               disabled={claimingRewardId === reward.id}
             >
-              <FontAwesomeIcon icon={faGift} style={{ marginRight: '8px' }} />
+              <FontAwesomeIcon icon={faGift} />
               Resgatar meu Presente
             </Button>
           ) : isClaimed ? (
-            <Button
-              disabled
-              style={{
-                width: '100%',
-                background: color,
-                borderColor: color,
-                color: '#fff',
-                cursor: 'not-allowed',
-              }}
-            >
-              <FontAwesomeIcon icon={faCheckCircle} style={{ marginRight: '8px' }} />
+            <Button disabled className="reward-claim-btn gap-2">
+              <FontAwesomeIcon icon={faCheckCircle} />
               Conquista Resgatada
             </Button>
           ) : (
             <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: '13px',
-                  marginBottom: '6px',
-                }}
-              >
-                <span style={{ color: 'var(--text-muted)' }}>Seu avanço</span>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
+              <div className="mb-1.5 flex justify-between text-[13px]">
+                <span className="text-muted">Seu avanço</span>
+                <span className="font-bold text-main">
                   {isCurrency ? formatCurrency(currentValue) : formatNumber(currentValue)}{' '}
                   / {isCurrency ? formatCurrency(reward.goal) : formatNumber(reward.goal)}{' '}
                   {isCurrency ? '' : 'vendas'}
                 </span>
               </div>
-              <div
-                style={{
-                  width: '100%',
-                  height: '8px',
-                  background: 'var(--hover)',
-                  borderRadius: '100px',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    width: `${progress}%`,
-                    height: '100%',
-                    background: 'var(--text-muted)',
-                    borderRadius: '100px',
-                  }}
-                />
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${progress}%` }} />
               </div>
             </div>
           )}
         </div>
       </Card>
+    );
+  };
+
+  const renderRewardSection = (title: string, tag: string, rewards: AchievementDefinition[], isMonthly: boolean) => {
+    if (rewards.length === 0) return null;
+    return (
+      <section>
+        <div className="mb-5 flex flex-wrap items-baseline gap-3">
+          <h3 className="section-title text-xl">{title}</h3>
+          <span className="rewards-section-tag">{tag}</span>
+        </div>
+
+        <div className='grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4'>
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="flex h-[300px] flex-col p-6">
+                <Skeleton circle width="64px" height="64px" className="mb-4" />
+                <Skeleton width="60%" height="24px" className="mb-2" />
+                <Skeleton width="90%" height="16px" className="mb-4" />
+                <Skeleton width="100%" height="44px" className="mt-auto" />
+              </Card>
+            ))
+            : getSortedRewards(rewards, isMonthly).map((reward) => renderRewardCard(reward, isMonthly))}
+        </div>
+      </section>
     );
   };
 
@@ -533,314 +373,46 @@ export default function BrindesPage() {
     (d) => d.reset_period === 'never' && d.metric === 'total_commission'
   );
 
+  const quickStats = [
+    { icon: faBagShopping, label: 'Vendas Totais', value: formatNumber(metrics.lifetimeConversions) },
+    { icon: faSackDollar, label: 'Comissão Total', value: formatCurrency(metrics.lifetimeCommissions) },
+    { icon: faChartLine, label: 'Vendas no Ciclo Atual', value: formatNumber(metrics.monthlyConversions) },
+  ];
+
   return (
     <div className='flex flex-col gap-8'>
-      {/* HEADER GAMIFICADO */}
-      <Card
-        className="p-6 sm:p-8"
-        style={{
-          background:
-            'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
-          border: '1px solid rgba(156, 39, 176, 0.2)',
-        }}
-      >
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 mb-8 text-center sm:text-left">
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, #2196f3 0%, #9c27b0 100%)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '24px',
-              boxShadow: '0 8px 16px rgba(156, 39, 176, 0.2)',
-              flexShrink: 0,
-            }}
-          >
+      <Card className="rewards-hero p-6 sm:p-8">
+        <div className="mb-8 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:gap-6 sm:text-left">
+          <div className="rewards-hero-icon">
             <FontAwesomeIcon icon={faCrown} />
           </div>
           <div className="flex flex-col gap-1">
-            <h2
-              style={{
-                margin: 0,
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: 'var(--text-main)',
-              }}
-            >
-              Clube de Recompensas
-            </h2>
-            <p
-              style={{
-                margin: 0,
-                color: 'var(--text-muted)',
-                fontSize: '15px',
-                lineHeight: '1.5',
-              }}
-            >
+            <h2 className="page-title">Clube de Recompensas</h2>
+            <p className="section-desc text-[15px]">
               Aproveite nossos bônus a cada ciclo e resgate presentes incríveis conforme
               você cresce com a Doxi!
             </p>
           </div>
         </div>
 
-        {/* ESTATÍSTICAS RÁPIDAS */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '16px',
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--card-bg)',
-              padding: '16px',
-              borderRadius: '12px',
-              border: '1px solid var(--border)',
-            }}
-          >
-            <div
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <FontAwesomeIcon icon={faBagShopping} /> Vendas Totais
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+          {quickStats.map((stat) => (
+            <div key={stat.label} className="rounded-xl border border-line bg-card p-4">
+              <div className="metric-label flex items-center gap-2">
+                <FontAwesomeIcon icon={stat.icon} /> {stat.label}
+              </div>
+              <div className="metric-value mt-2">
+                {loading ? <Skeleton width="110px" height="32px" /> : stat.value}
+              </div>
             </div>
-            <div
-              style={{
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: 'var(--text-main)',
-                marginTop: '8px',
-              }}
-            >
-              {loading ? (
-                <Skeleton width="100px" height="34px" />
-              ) : (
-                formatNumber(metrics.lifetimeConversions)
-              )}
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: 'var(--card-bg)',
-              padding: '16px',
-              borderRadius: '12px',
-              border: '1px solid var(--border)',
-            }}
-          >
-            <div
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <FontAwesomeIcon icon={faSackDollar} /> Comissão Total
-            </div>
-            <div
-              style={{
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: 'var(--text-main)',
-                marginTop: '8px',
-              }}
-            >
-              {loading ? (
-                <Skeleton width="120px" height="34px" />
-              ) : (
-                formatCurrency(metrics.lifetimeCommissions)
-              )}
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: 'var(--card-bg)',
-              padding: '16px',
-              borderRadius: '12px',
-              border: '1px solid var(--border)',
-            }}
-          >
-            <div
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <FontAwesomeIcon icon={faChartLine} /> Vendas no Ciclo Atual
-            </div>
-            <div
-              style={{
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: 'var(--text-main)',
-                marginTop: '8px',
-              }}
-            >
-              {loading ? (
-                <Skeleton width="100px" height="34px" />
-              ) : (
-                formatNumber(metrics.monthlyConversions)
-              )}
-            </div>
-          </div>
+          ))}
         </div>
       </Card>
 
-      {/* BÔNUS EXTRAS DO CICLO */}
-      {missions.length > 0 && (
-        <div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: '12px',
-              marginBottom: '20px',
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: '20px', color: 'var(--text-main)' }}>
-              Bônus Extras do Ciclo
-            </h3>
-            <span
-              style={{
-                fontSize: '13px',
-                color: 'var(--text-muted)',
-                background: 'var(--hover)',
-                padding: '4px 8px',
-                borderRadius: '100px',
-              }}
-            >
-              Recomeça todo dia 1° do mês
-            </span>
-          </div>
+      {renderRewardSection('Bônus Extras do Ciclo', 'Recomeça todo dia 1° do mês', missions, true)}
+      {renderRewardSection('Prêmios por Quantidade de Vendas', 'Seus presentes vitalícios', achievementsSales, false)}
+      {renderRewardSection('Prêmios por Comissões Acumuladas', 'Seus presentes vitalícios', achievementsCommission, false)}
 
-          <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6'>
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} style={{ padding: '24px', height: '300px' }}>
-                  <Skeleton circle width="64px" height="64px" className="mb-4" />
-                  <Skeleton width="60%" height="24px" className="mb-2" />
-                  <Skeleton width="90%" height="16px" className="mb-4" />
-                  <Skeleton width="100%" height="44px" className="mt-auto" />
-                </Card>
-              ))
-            ) : (
-              getSortedRewards(missions, true).map((reward) =>
-                renderRewardCard(reward, true)
-              )
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* PRÊMIOS POR QUANTIDADE DE VENDAS */}
-      {achievementsSales.length > 0 && (
-        <div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: '12px',
-              marginBottom: '20px',
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: '20px', color: 'var(--text-main)' }}>
-              Prêmios por Quantidade de Vendas
-            </h3>
-            <span
-              style={{
-                fontSize: '13px',
-                color: 'var(--text-muted)',
-                background: 'var(--hover)',
-                padding: '4px 8px',
-                borderRadius: '100px',
-              }}
-            >
-              Seus presentes vitalícios
-            </span>
-          </div>
-
-          <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6'>
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} style={{ padding: '24px', height: '300px' }}>
-                  <Skeleton circle width="64px" height="64px" className="mb-4" />
-                  <Skeleton width="60%" height="24px" className="mb-2" />
-                  <Skeleton width="90%" height="16px" className="mb-4" />
-                  <Skeleton width="100%" height="44px" className="mt-auto" />
-                </Card>
-              ))
-            ) : (
-              getSortedRewards(achievementsSales, false).map((reward) =>
-                renderRewardCard(reward, false)
-              )
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* PRÊMIOS POR COMISSÕES ACUMULADAS */}
-      {achievementsCommission.length > 0 && (
-        <div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: '12px',
-              marginBottom: '20px',
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: '20px', color: 'var(--text-main)' }}>
-              Prêmios por Comissões Acumuladas
-            </h3>
-            <span
-              style={{
-                fontSize: '13px',
-                color: 'var(--text-muted)',
-                background: 'var(--hover)',
-                padding: '4px 8px',
-                borderRadius: '100px',
-              }}
-            >
-              Seus presentes vitalícios
-            </span>
-          </div>
-
-          <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6'>
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} style={{ padding: '24px', height: '300px' }}>
-                  <Skeleton circle width="64px" height="64px" className="mb-4" />
-                  <Skeleton width="60%" height="24px" className="mb-2" />
-                  <Skeleton width="90%" height="16px" className="mb-4" />
-                  <Skeleton width="100%" height="44px" className="mt-auto" />
-                </Card>
-              ))
-            ) : (
-              getSortedRewards(achievementsCommission, false).map((reward) =>
-                renderRewardCard(reward, false)
-              )
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* MODAL DE REIVINDICAÇÃO */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -848,42 +420,16 @@ export default function BrindesPage() {
         size='md'
       >
         {selectedReward && (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div
-              style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: `${selectedReward.color_hex || '#2196f3'}15`,
-                color: selectedReward.color_hex || '#2196f3',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '36px',
-                margin: '0 auto 24px auto',
-              }}
-            >
+          <div className="py-5 text-center" style={rewardColorStyle(selectedReward.color_hex)}>
+            <div className="reward-icon reward-icon--active mx-auto mb-6 h-20 w-20 text-4xl">
               <FontAwesomeIcon icon={faCheckCircle} />
             </div>
 
-            <h3
-              style={{
-                margin: '0 0 12px 0',
-                fontSize: '22px',
-                color: 'var(--text-main)',
-              }}
-            >
+            <h3 className="mb-3 text-[22px] font-bold text-main">
               Você liberou: {selectedReward.title}
             </h3>
 
-            <p
-              style={{
-                margin: '0 0 24px 0',
-                fontSize: '15px',
-                color: 'var(--text-muted)',
-                lineHeight: 1.5,
-              }}
-            >
+            <p className="mb-6 text-[15px] leading-normal text-muted">
               Nossa equipe já foi avisada do seu sucesso! Em até 48 horas úteis, você
               receberá um e-mail com todos os detalhes de como receber o seu presente:
               <br />
@@ -891,25 +437,9 @@ export default function BrindesPage() {
               <strong>{selectedReward.description}</strong>
             </p>
 
-            <div
-              style={{
-                background: 'var(--hover)',
-                padding: '16px',
-                borderRadius: '8px',
-                marginBottom: '24px',
-              }}
-            >
-              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                Meta Atingida
-              </span>
-              <div
-                style={{
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  color: 'var(--text-main)',
-                  marginTop: '4px',
-                }}
-              >
+            <div className="soft-panel mb-6">
+              <span className="metric-label">Meta Atingida</span>
+              <div className="mt-1 text-lg font-bold text-main">
                 {ACHIEVEMENT_METRIC_LABELS[selectedReward.metric] ||
                   selectedReward.metric}
                 :{' '}
@@ -919,7 +449,7 @@ export default function BrindesPage() {
               </div>
             </div>
 
-            <Button style={{ width: '100%' }} onClick={() => setIsModalOpen(false)}>
+            <Button onClick={() => setIsModalOpen(false)}>
               Perfeito, muito obrigada!
             </Button>
           </div>

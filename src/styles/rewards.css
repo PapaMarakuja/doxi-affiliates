@@ -1,0 +1,173 @@
+/* =========================================
+   Rewards (Brindes) page
+   ========================================= */
+
+.ui-card.rewards-hero {
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%),
+    var(--card-bg);
+}
+
+.rewards-hero-icon {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #fff;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #a855f7 100%);
+  box-shadow: 0 8px 16px rgba(168, 85, 247, 0.2);
+}
+
+.rewards-section-tag {
+  padding: 4px 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--hover);
+  border-radius: 999px;
+}
+
+/* Reward card — color comes from the achievement (--reward-color) */
+.ui-card.reward-card {
+  --reward-color: var(--info);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  opacity: 0.85;
+}
+
+.ui-card.reward-card--unlocked {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--reward-color) 25%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--reward-color) 10%, transparent);
+}
+
+.reward-status {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+}
+
+.reward-card--unlocked .reward-status {
+  --badge-color: var(--reward-color);
+}
+
+.reward-mystery {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  z-index: 1;
+  font-size: 64px;
+  color: var(--text-muted);
+  opacity: 0.3;
+  transform: translate(-50%, -50%);
+}
+
+.reward-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  transition: filter 0.3s ease;
+}
+
+.reward-body--blurred {
+  filter: blur(6px);
+  user-select: none;
+}
+
+.reward-icon {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--text-muted);
+  background: var(--hover);
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.reward-card--unlocked .reward-icon,
+.reward-icon--active {
+  color: var(--reward-color);
+  background: color-mix(in srgb, var(--reward-color) 10%, transparent);
+}
+
+.reward-card--unlocked .reward-icon {
+  transform: scale(1.1);
+}
+
+.reward-prize {
+  --prize-color: #ca8a04;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--prize-color) 28%, transparent);
+  background: color-mix(in srgb, var(--prize-color) 12%, transparent);
+  border-radius: 10px;
+}
+
+.reward-prize--bonus_cash { --prize-color: var(--success); }
+.reward-prize--coupon { --prize-color: var(--info); }
+
+.reward-prize-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--prize-color);
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 8px;
+}
+
+.dark .reward-prize-icon {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.reward-prize-value {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--prize-color);
+}
+
+.ui-button.reward-claim-btn,
+.ui-button.reward-claim-btn:hover {
+  color: #fff;
+  background: var(--reward-color);
+}
+
+.ui-button.reward-claim-btn:hover {
+  filter: brightness(0.95);
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  background: var(--hover);
+  border-radius: 999px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--text-muted);
+  border-radius: 999px;
+}

@@ -36,19 +36,46 @@ export function Modal({
   id,
   zIndex,
 }: ModalProps) {
-  const [isMounted, setIsMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const closeRequestedRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  // Sync with `isOpen` during render (React's recommended alternative to setState inside an effect).
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setIsMounted(true);
+      setIsClosing(false);
+    } else if (isMounted) {
+      setIsClosing(true);
+    }
+  }
+
+  // Unmount after the closing animation; notify the parent only when the modal closed itself.
+  useEffect(() => {
+    if (!isClosing) return;
+    const timer = setTimeout(() => {
+      setIsClosing(false);
+      setIsMounted(false);
+      if (closeRequestedRef.current) {
+        closeRequestedRef.current = false;
+        onCloseRef.current();
+      }
+    }, CLOSE_ANIMATION_MS);
+    return () => clearTimeout(timer);
+  }, [isClosing]);
 
   const triggerClose = useCallback(() => {
     if (isClosing) return;
+    closeRequestedRef.current = true;
     setIsClosing(true);
-    closeTimerRef.current = setTimeout(() => {
-      setIsClosing(false);
-      setIsMounted(false);
-      onClose();
-    }, CLOSE_ANIMATION_MS);
-  }, [isClosing, onClose]);
+  }, [isClosing]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -56,24 +83,6 @@ export function Modal({
     },
     [triggerClose]
   );
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsMounted(true);
-      setIsClosing(false);
-    }
-  }, [isOpen]);
-
-  // Detecta quando isOpen muda pra false externamente (sem triggerClose)
-  useEffect(() => {
-    if (!isOpen && isMounted && !isClosing) {
-      setIsClosing(true);
-      closeTimerRef.current = setTimeout(() => {
-        setIsClosing(false);
-        setIsMounted(false);
-      }, CLOSE_ANIMATION_MS);
-    }
-  }, [isOpen, isMounted, isClosing]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -84,12 +93,6 @@ export function Modal({
       document.body.style.overflow = "";
     };
   }, [isMounted, handleKeyDown]);
-
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    };
-  }, []);
 
   if (!isMounted && !isOpen) return null;
   if (!isOpen && !isClosing) return null;

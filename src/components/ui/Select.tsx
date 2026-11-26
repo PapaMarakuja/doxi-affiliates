@@ -2,17 +2,21 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faTimes, faCheck } from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
 export interface SelectOption {
   value: string | number;
   label: string;
+  icon?: IconDefinition;
 }
+
+export type SelectValue = string | number | (string | number)[] | null;
 
 export interface SelectProps {
   label?: string;
   options: SelectOption[];
   value?: string | number | (string | number)[] | null;
-  onChange?: (value: any) => void;
+  onChange?: (value: SelectValue) => void;
   icon?: React.ReactNode;
   error?: string;
   className?: string;
@@ -40,6 +44,11 @@ export function Select({
   appendTo = null,
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const closeDropdown = () => {
+    setIsOpen(false);
+    setSearchTerm("");
+  };
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
@@ -55,7 +64,7 @@ export function Select({
       const isInsideDropdown = dropdownRef.current?.contains(target);
 
       if (!isInsideContainer && !isInsideDropdown) {
-        setIsOpen(false);
+        closeDropdown();
       }
     }
     if (isOpen) {
@@ -66,25 +75,17 @@ export function Select({
     };
   }, [isOpen]);
 
-  const [searchTerm, setSearchTerm] = useState("");
-
   const filteredOptions = options.filter((opt) =>
     opt.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  useEffect(() => {
-    if (!isOpen) setSearchTerm("");
-    if (isOpen && containerRef.current) {
-      setDropdownRect(containerRef.current.getBoundingClientRect());
-    }
-  }, [isOpen]);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isOpen && containerRef.current) {
       setDropdownRect(containerRef.current.getBoundingClientRect());
     }
-    setIsOpen(!isOpen);
+    if (isOpen) closeDropdown();
+    else setIsOpen(true);
   };
 
   const handleSelect = (option: SelectOption, e?: React.MouseEvent) => {
@@ -105,17 +106,13 @@ export function Select({
       onChange?.(option.value);
     }
 
-    if (shouldCloseOnClick) {
-      setIsOpen(false);
-    }
+    if (shouldCloseOnClick) closeDropdown();
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     onChange?.(multiple ? [] : null);
-    if (shouldCloseOnClick) {
-      setIsOpen(false);
-    }
+    if (shouldCloseOnClick) closeDropdown();
   };
 
   // Determinar o texto a ser exibido
@@ -140,62 +137,40 @@ export function Select({
     }
   }
 
+  const selectedOption = !multiple ? options.find((opt) => opt.value === value) : undefined;
+  const isPortal = appendTo === "body";
+  // Portal dropdowns are positioned from the trigger's measured rect; open upward when there is no room below.
+  const DROPDOWN_MAX_HEIGHT = 300;
+  const opensUp = !!dropdownRect && typeof window !== "undefined" &&
+    dropdownRect.bottom + DROPDOWN_MAX_HEIGHT + 16 > window.innerHeight && dropdownRect.top > DROPDOWN_MAX_HEIGHT + 16;
+  const portalStyle: React.CSSProperties | undefined = isPortal && dropdownRect
+    ? {
+      left: dropdownRect.left,
+      width: dropdownRect.width,
+      ...(opensUp ? { top: "auto", bottom: window.innerHeight - dropdownRect.top + 8 } : { top: dropdownRect.bottom + 8 }),
+    }
+    : undefined;
+
   const DropdownMenu = (
     <div
       ref={dropdownRef}
-      className="select-dropdown"
-      style={{
-        position: appendTo === "body" ? "fixed" : "absolute",
-        top: appendTo === "body"
-          ? (dropdownRect ? dropdownRect.bottom + 8 : 0)
-          : "calc(100% + 8px)",
-        left: appendTo === "body"
-          ? (dropdownRect ? dropdownRect.left : 0)
-          : 0,
-        width: appendTo === "body"
-          ? (dropdownRect ? dropdownRect.width : "100%")
-          : "100%",
-        background: "var(--dropdown-bg)",
-        boxShadow: "var(--dropdown-shadow)",
-        borderRadius: "var(--border-radius)",
-        border: "1px solid var(--border)",
-        zIndex: appendTo === "body" ? 100000 : 50,
-        maxHeight: "300px",
-        overflowY: "auto",
-        padding: "8px",
-        animation: "slideDown 0.2s ease",
-        display: "flex",
-        flexDirection: "column",
-        gap: "4px"
-      }}
-      onClick={(e) => e.stopPropagation()} // Previne fechar se clicar no fundo do menu
+      className={`select-dropdown ${isPortal ? "select-dropdown--portal" : ""}`}
+      style={portalStyle}
+      onClick={(e) => e.stopPropagation()}
     >
-      {/* Campo de Busca */}
-      <div style={{ padding: "4px 4px 8px 4px", position: "sticky", top: 0, background: "var(--dropdown-bg)", zIndex: 1 }}>
+      <div className="select-search">
         <input
           type="text"
           placeholder="Buscar..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           autoFocus
-          style={{
-            width: "100%",
-            padding: "8px 12px",
-            borderRadius: "6px",
-            border: "1px solid var(--border)",
-            background: "var(--input-bg)",
-            color: "var(--text-main)",
-            fontSize: "13px",
-            outline: "none"
-          }}
           onClick={(e) => e.stopPropagation()}
         />
       </div>
 
       {filteredOptions.length === 0 ? (
-        <div style={{ padding: "12px", textAlign: "center", color: "var(--text-muted)", fontSize: "14px" }}>
-          Nenhuma opção encontrada
-        </div>
+        <div className="select-empty">Nenhuma opção encontrada</div>
       ) : (
         filteredOptions.map((opt) => {
           const isSelected = multiple
@@ -206,30 +181,11 @@ export function Select({
             <div
               key={opt.value}
               onClick={(e) => handleSelect(opt, e)}
-              style={{
-                padding: "10px 12px",
-                borderRadius: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-                background: isSelected ? "var(--sidebar-active-bg)" : "transparent",
-                color: isSelected ? "var(--sidebar-active-text)" : "var(--text-main)",
-                fontWeight: isSelected ? 600 : 400,
-                fontSize: "14px",
-              }}
-              onMouseEnter={(e) => {
-                if (!isSelected) e.currentTarget.style.background = "var(--dropdown-hover)";
-              }}
-              onMouseLeave={(e) => {
-                if (!isSelected) e.currentTarget.style.background = "transparent";
-              }}
+              className={`select-option ${isSelected ? "select-option--selected" : ""}`}
             >
-              <span>{opt.label}</span>
-              {isSelected && (
-                <FontAwesomeIcon icon={faCheck} style={{ fontSize: "12px" }} />
-              )}
+              {opt.icon && <FontAwesomeIcon icon={opt.icon} className="select-option-icon" />}
+              <span className="select-option-label">{opt.label}</span>
+              {isSelected && <FontAwesomeIcon icon={faCheck} className="text-xs" />}
             </div>
           );
         })
@@ -245,84 +201,33 @@ export function Select({
         </div>
       )}
 
-      <div
-        className="input-wrapper"
-        style={{ cursor: "pointer", position: "relative" }}
-        onClick={handleToggle}
-      >
+      <div className="input-wrapper select-trigger" onClick={handleToggle}>
         {icon && <span className="input-icon">{icon}</span>}
 
         <div
-          className={`input-field ${icon ? "input-has-icon" : ""} ${clearable ? "input-has-suffix" : ""
-            } ${error ? "input-error-state" : ""}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            userSelect: "none",
-            minHeight: "48px", // Padrão de altura do input
-            color: hasSelection ? "var(--text-main)" : "var(--input-placeholder)"
-          }}
+          className={`input-field ${icon ? "input-has-icon" : ""} ${clearable ? "input-has-suffix" : ""} ${error ? "input-error-state" : ""} ${hasSelection ? "select-has-value" : ""}`}
         >
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-            {displayLabel}
-          </span>
+          {selectedOption?.icon && <FontAwesomeIcon icon={selectedOption.icon} className="select-option-icon" />}
+          <span className="select-value">{displayLabel}</span>
         </div>
 
-        {/* Sufixo: Limpar e Ícone da Seta */}
-        <div className="input-suffix" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div className="input-suffix select-suffix">
           {clearable && hasSelection && (
-            <div
-              onClick={handleClear}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "20px",
-                height: "20px",
-                borderRadius: "50%",
-                background: "rgba(224, 81, 81, 0.15)",
-                color: "var(--error-text)",
-                fontSize: "10px",
-                transition: "all 0.2s",
-                zIndex: 2
-              }}
-              className="select-clear-btn"
-            >
+            <div onClick={handleClear} className="select-clear-btn">
               <FontAwesomeIcon icon={faTimes} />
             </div>
           )}
-          <FontAwesomeIcon
-            icon={faChevronDown}
-            style={{
-              transition: "transform 0.3s ease",
-              transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-              color: "var(--input-icon)",
-              fontSize: "12px",
-              pointerEvents: "none"
-            }}
-          />
+          <FontAwesomeIcon icon={faChevronDown} className={`select-chevron ${isOpen ? "select-chevron--open" : ""}`} />
         </div>
 
-        {/* Dropdown Menu */}
         {isOpen && (
-          appendTo === "body" && typeof document !== "undefined"
+          isPortal && typeof document !== "undefined"
             ? createPortal(DropdownMenu, document.body)
             : DropdownMenu
         )}
       </div>
 
-      {error && <span className="input-error" style={{ color: "var(--error-text)", fontSize: "12px" }}>{error}</span>}
-
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .select-clear-btn:hover {
-          background: rgba(224, 81, 81, 0.3) !important;
-        }
-      `}} />
+      {error && <span className="input-error">{error}</span>}
     </div>
   );
 }

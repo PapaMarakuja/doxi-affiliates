@@ -52,7 +52,7 @@ export function LoginForm() {
         Entrar
       </Button>
 
-      <p className='text-sm mt-2' style={{ color: 'var(--text-muted)' }}>
+      <p className='mt-2 text-sm text-muted'>
         Após o login, sua sessão permanece ativa até você sair.
       </p>
     </form>

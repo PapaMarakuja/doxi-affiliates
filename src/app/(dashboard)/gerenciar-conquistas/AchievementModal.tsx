@@ -1,9 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { Modal } from "@/src/components/ui/Modal";
 import { Input } from "@/src/components/ui/Input";
 import { Select } from "@/src/components/ui/Select";
@@ -17,7 +14,11 @@ import {
   REWARD_TYPE_OPTIONS, 
   RESET_PERIOD_OPTIONS 
 } from "@/src/lib/achievements/achievementMappings";
-import type { AchievementDefinition } from "@/src/types/achievements";
+import type { AchievementDefinition, AchievementMetric, AchievementType, ResetPeriod, RewardType } from "@/src/types/achievements";
+import type { SelectOption } from "@/src/components/ui/Select";
+
+const DEFAULT_COLOR = "#2196f3";
+const ICON_OPTIONS: SelectOption[] = Object.entries(iconMap).map(([key, icon]) => ({ value: key, label: key, icon }));
 
 interface AchievementModalProps {
   isOpen: boolean;
@@ -29,8 +30,6 @@ interface AchievementModalProps {
 export function AchievementModal({ isOpen, onClose, achievement, onSaveSuccess }: AchievementModalProps) {
   const [formData, setFormData] = useState<Partial<AchievementDefinition>>({});
   const [loading, setLoading] = useState(false);
-  const [iconDropdownOpen, setIconDropdownOpen] = useState(false);
-  const [iconDropdownRect, setIconDropdownRect] = useState<DOMRect | null>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export function AchievementModal({ isOpen, onClose, achievement, onSaveSuccess }
         type: "commission",
         metric: "total_commission",
         reward_type: "coupon",
-        color_hex: "#2196f3",
+        color_hex: DEFAULT_COLOR,
         reset_period: "never",
         sort_order: 1
       });
@@ -71,8 +70,8 @@ export function AchievementModal({ isOpen, onClose, achievement, onSaveSuccess }
       } else {
         throw new Error(result.error || "Erro ao salvar");
       }
-    } catch (err: any) {
-      addToast({ message: err.message, type: "error" });
+    } catch (err) {
+      addToast({ message: err instanceof Error ? err.message : "Erro ao salvar", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -99,58 +98,52 @@ export function AchievementModal({ isOpen, onClose, achievement, onSaveSuccess }
           placeholder="Descrição da conquista..."
         />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label="Tipo"
             options={ACHIEVEMENT_TYPE_OPTIONS}
             value={formData.type}
-            onChange={(val) => setFormData({ ...formData, type: val as any })}
+            onChange={(val) => setFormData({ ...formData, type: val as AchievementType })}
             appendTo="body"
           />
           <Select
             label="Métrica"
             options={ACHIEVEMENT_METRIC_OPTIONS}
             value={formData.metric}
-            onChange={(val) => setFormData({ ...formData, metric: val as any })}
+            onChange={(val) => setFormData({ ...formData, metric: val as AchievementMetric })}
             appendTo="body"
           />
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          <Input 
-            label="Meta (Valor)" 
-            type="number" 
-            value={formData.goal || 0} 
-            onChange={(e) => setFormData({ ...formData, goal: Number(e.target.value) })} 
+          <Input
+            label="Meta (Valor)"
+            type="number"
+            value={formData.goal || 0}
+            onChange={(e) => setFormData({ ...formData, goal: Number(e.target.value) })}
           />
-          <Input 
-            label="Valor do Prêmio" 
-            type="number" 
-            value={formData.reward_value || 0} 
-            onChange={(e) => setFormData({ ...formData, reward_value: Number(e.target.value) })} 
+          <Input
+            label="Valor do Prêmio"
+            type="number"
+            value={formData.reward_value || 0}
+            onChange={(e) => setFormData({ ...formData, reward_value: Number(e.target.value) })}
           />
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <Select
             label="Tipo de Prêmio"
             options={REWARD_TYPE_OPTIONS}
             value={formData.reward_type}
-            onChange={(val) => setFormData({ ...formData, reward_type: val as any })}
+            onChange={(val) => setFormData({ ...formData, reward_type: val as RewardType })}
             appendTo="body"
           />
-          <div style={{ display: "flex", gap: "16px" }}>
-            <div style={{ flex: 1 }}>
+          <div className="flex gap-4">
+            <div className="flex-1">
               <Select
                 label="Período de Reset"
                 options={RESET_PERIOD_OPTIONS}
                 value={formData.reset_period}
-                onChange={(val) => setFormData({ ...formData, reset_period: val as any })}
+                onChange={(val) => setFormData({ ...formData, reset_period: val as ResetPeriod })}
                 appendTo="body"
               />
             </div>
             {(formData.reset_period === "monthly" || formData.reset_period === "weekly") && (
-              <div style={{ width: "80px" }}>
+              <div className="w-20">
                 <Input
                   label="Dia"
                   type="number"
@@ -162,93 +155,33 @@ export function AchievementModal({ isOpen, onClose, achievement, onSaveSuccess }
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "16px" }}>
-          <div style={{ flex: 1, position: "relative" }}>
-            <label className="input-label" style={{ display: "block", marginBottom: "8px" }}>Ícone</label>
-            <div
-              onClick={(e) => {
-                setIconDropdownRect(e.currentTarget.getBoundingClientRect());
-                setIconDropdownOpen(!iconDropdownOpen);
-              }}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "12px", border: "1px solid var(--border)", borderRadius: "8px",
-                background: "var(--card-bg)", cursor: "pointer", height: "48px"
-              }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                {formData.icon_key && iconMap[formData.icon_key] ? (
-                  <>
-                    <FontAwesomeIcon icon={iconMap[formData.icon_key]} style={{ width: "20px", color: formData.color_hex || "var(--text-main)" }} />
-                    <span style={{ color: "var(--text-main)" }}>{formData.icon_key}</span>
-                  </>
-                ) : (
-                  <span style={{ color: "var(--input-placeholder)" }}>Selecione um ícone...</span>
-                )}
-              </div>
-              <FontAwesomeIcon icon={faChevronDown} style={{ color: "var(--input-icon)", fontSize: "12px" }} />
-            </div>
-            {iconDropdownOpen && iconDropdownRect && typeof document !== "undefined" && createPortal(
-              <>
-                <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} onClick={() => setIconDropdownOpen(false)} />
-                <div style={{
-                  position: "absolute", 
-                  top: iconDropdownRect.bottom + 4, 
-                  left: iconDropdownRect.left, 
-                  width: iconDropdownRect.width, 
-                  zIndex: 100000,
-                  background: "var(--dropdown-bg)", 
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px", 
-                  maxHeight: "200px", 
-                  overflowY: "auto",
-                  boxShadow: "var(--dropdown-shadow)"
-                }}>
-                  {Object.keys(iconMap).map(key => (
-                    <div
-                      key={key}
-                      onClick={() => { setFormData({ ...formData, icon_key: key }); setIconDropdownOpen(false); }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px",
-                        cursor: "pointer", transition: "background 0.2s",
-                        color: "var(--text-main)"
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "var(--hover)"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                    >
-                      <FontAwesomeIcon icon={iconMap[key]} style={{ width: "20px" }} />
-                      <span>{key}</span>
-                    </div>
-                  ))}
-                </div>
-              </>,
-              document.body
-            )}
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <Select
+              label="Ícone"
+              placeholder="Selecione um ícone..."
+              options={ICON_OPTIONS}
+              value={formData.icon_key}
+              onChange={(val) => setFormData({ ...formData, icon_key: (val as string | null) ?? null })}
+              appendTo="body"
+            />
           </div>
 
-          <div style={{ width: "120px" }}>
-            <label className="input-label" style={{ display: "block", marginBottom: "8px" }}>Cor</label>
-            <div style={{
-              display: "flex", alignItems: "center", gap: "12px",
-              padding: "6px", border: "1px solid var(--border)", borderRadius: "8px",
-              background: "var(--card-bg)", height: "48px"
-            }}>
+          <div className="input-field-container w-[130px]">
+            <span className="input-label">Cor</span>
+            <label className="input-field flex min-h-[48px] cursor-pointer items-center gap-3 px-2 py-1.5">
               <input
                 type="color"
-                value={formData.color_hex || "#2196f3"}
+                className="h-8 w-8 cursor-pointer rounded-md border-0 bg-transparent p-0"
+                value={formData.color_hex || DEFAULT_COLOR}
                 onChange={(e) => setFormData({ ...formData, color_hex: e.target.value })}
-                style={{
-                  width: "32px", height: "32px", padding: 0, border: "none",
-                  borderRadius: "6px", cursor: "pointer", background: "transparent"
-                }}
               />
-              <span style={{ fontSize: "14px", color: "var(--text-main)", fontFamily: "monospace" }}>
-                {formData.color_hex || "#2196f3"}
-              </span>
-            </div>
+              <span className="font-mono text-sm">{formData.color_hex || DEFAULT_COLOR}</span>
+            </label>
           </div>
         </div>
 
-        <div style={{ marginBlock: '20px' }}>
+        <div className="my-2">
           <Checkbox
             label="Conquista Repetível (Pode ser ganha mais de uma vez?)"
             checked={formData.is_repeatable || false}
@@ -256,7 +189,7 @@ export function AchievementModal({ isOpen, onClose, achievement, onSaveSuccess }
           />
         </div>
 
-        <Button onClick={handleSave} loading={loading} style={{ marginTop: "16px" }}>
+        <Button onClick={handleSave} loading={loading}>
           {formData.id ? "Salvar Alterações" : "Criar Conquista"}
         </Button>
       </div>

@@ -1,9 +1,10 @@
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { AffiliateRepository } from "@/src/repositories/affiliate.repository";
 import { getAffiliateDataStartDate, calculateOrderCommission } from "@/src/lib/utils";
+import type { AffiliateOwedCalculation } from "@/src/types/payout";
 
 export class PayoutService {
-  async calculateAffiliateOwed(affiliateId: string) {
+  async calculateAffiliateOwed(affiliateId: string): Promise<AffiliateOwedCalculation> {
     const supabase = await createSupabaseServerClient();
     
     // Get affiliate info including pix_key
@@ -71,7 +72,7 @@ export class PayoutService {
       affiliateId,
       name: affiliate.name,
       pixKey: affiliate.pix_key || "Não cadastrada",
-      payoutMethod: (affiliate.payout_method as "pix" | "cupom") || "pix",
+      payoutMethod: affiliate.payout_method || "pix",
       baseCommission: baseCommissionTotal,
       achievementsCommission: achievementsCommissionTotal,
       totalEarned,

@@ -1,14 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { Card } from '@/src/components/ui/Card';
 import { Wizard, type WizardStep } from '@/src/components/ui/Wizard';
-import ThemeToggle from '@/src/components/ThemeToggle';
-import loginBackground from '@/src/assets/images/login-background.png';
-import doxiClubLightLogo from '@/src/assets/images/doxi-club-light.png';
-import doxiClubDarkLogo from '@/src/assets/images/doxi-club-dark.png';
+import { AuthShell } from '@/src/components/auth/AuthShell';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faPaw,
@@ -239,75 +234,40 @@ export default function CadastroPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      className="cad-page"
-      style={{
-        backgroundImage: `url(${loginBackground.src})`,
-      }}
+    <AuthShell
+      footer={
+        <>
+          Já possui uma conta?{" "}
+          <Link href="/login" className="cad-footer-link">Faça login</Link>
+        </>
+      }
     >
-      <ThemeToggle variant="floating" />
+      {submitted ? (
+        <StepFinalizacao />
+      ) : (
+        <>
+          <div className="cad-card-heading">
+            <h1 className="cad-card-heading-title">Candidatura de Afiliada</h1>
+            <p className="cad-card-heading-sub">
+              Preencha as etapas abaixo para enviar sua candidatura ao programa DoxiClub.
+            </p>
+          </div>
 
-      <header className="cad-header">
-        <div className="cad-logo-wrap">
-          <Image
-            src={doxiClubLightLogo}
-            alt="Doxi Club"
-            priority
-            className="login-logo-light"
-            style={{ width: '100%', height: 'auto', display: 'block' }}
-          />
-          <Image
-            src={doxiClubDarkLogo}
-            alt="Doxi Club"
-            priority
-            className="login-logo-dark"
-            style={{ width: '100%', height: 'auto' }}
-          />
-        </div>
-      </header>
-
-      <div className="cad-card-wrap">
-        <Card>
-          {submitted ? (
-            <StepFinalizacao />
-          ) : (
-            <>
-              <div className="cad-card-heading">
-                <h1 className="cad-card-heading-title">Candidatura de Afiliada</h1>
-                <p className="cad-card-heading-sub">
-                  Preencha as etapas abaixo para enviar sua candidatura ao programa DoxiClub.
-                </p>
-              </div>
-
-              {submitError && (
-                <div className="wizard-error" role="alert" style={{ marginBottom: 20 }}>
-                  <span className="wizard-error-icon">✕</span>
-                  <span>{submitError}</span>
-                </div>
-              )}
-
-              <Wizard
-                steps={steps}
-                onComplete={handleComplete}
-                completeLabel={submitting ? submittingText : 'Enviar candidatura'}
-                loading={submitting}
-              />
-            </>
+          {submitError && (
+            <div className="wizard-error mb-5" role="alert">
+              <span className="wizard-error-icon">✕</span>
+              <span>{submitError}</span>
+            </div>
           )}
-        </Card>
-      </div>
 
-      <footer className="cad-footer">
-        <Card>
-          Já possui uma conta?{' '}
-          <Link
-            href="/login"
-            style={{ color: 'var(--pink-dark)', textDecoration: 'none', fontWeight: 600 }}
-          >
-            Faça login
-          </Link>
-        </Card>
-      </footer>
-    </div>
+          <Wizard
+            steps={steps}
+            onComplete={handleComplete}
+            completeLabel={submitting ? submittingText : "Enviar candidatura"}
+            loading={submitting}
+          />
+        </>
+      )}
+    </AuthShell>
   );
 }

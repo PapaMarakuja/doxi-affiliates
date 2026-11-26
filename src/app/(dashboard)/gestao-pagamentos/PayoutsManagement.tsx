@@ -5,7 +5,10 @@ import { Card } from "@/src/components/ui/Card";
 import { Input } from "@/src/components/ui/Input";
 import { Button } from "@/src/components/ui/Button";
 import { Table, Column } from "@/src/components/ui/Table";
-import { Skeleton } from "@/src/components/ui/Skeleton";
+import { Badge, BadgeTone } from "@/src/components/ui/Badge";
+import { MetricCard } from "@/src/components/ui/MetricCard";
+import { SegmentedControl, SegmentedOption } from "@/src/components/ui/SegmentedControl";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -31,13 +34,31 @@ import { useConfirmDialog } from "@/src/contexts/ConfirmDialogContext";
 import { AffiliateOrdersModal } from "@/src/components/ui/AffiliateOrdersModal";
 import { BatchPayoutModal } from "@/src/components/ui/BatchPayoutModal";
 
+type PayoutStatus = NonNullable<Payout["status"]>;
+type PayoutStatusFilter = "" | "pending" | "paid";
+
+const PAYOUT_STATUS: Record<PayoutStatus, { label: string; tone: BadgeTone; icon: IconDefinition }> = {
+  paid: { label: "Pago", tone: "success", icon: faCheckCircle },
+  pending: { label: "Pendente", tone: "warning", icon: faClock },
+  cancelled: { label: "Cancelado", tone: "danger", icon: faTimesCircle },
+};
+
+const STATUS_FILTER_OPTIONS: SegmentedOption<PayoutStatusFilter>[] = [
+  { value: "", label: "Todos" },
+  { value: "pending", label: "Pendentes" },
+  { value: "paid", label: "Pagos" },
+];
+
+const isCopyablePixKey = (pixKey: string | null | undefined) =>
+  !!pixKey && !["não cadastrada", "nao cadastrada"].includes(pixKey.toLowerCase());
+
 export function PayoutsManagement() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [summary, setSummary] = useState<PayoutSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<PayoutStatusFilter>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [ordersModalAffiliate, setOrdersModalAffiliate] = useState<{
@@ -69,7 +90,7 @@ export function PayoutsManagement() {
           type: "error",
         });
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[PayoutsManagement] fetchPayouts error:", err);
       addToast({ message: "Erro de conexão ao carregar pagamentos", type: "error" });
     } finally {
@@ -188,12 +209,12 @@ export function PayoutsManagement() {
 
   const filteredPayouts = payouts.filter(
     (p) =>
-      (p as any).affiliates?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.affiliates?.name?.toLowerCase().includes(search.toLowerCase()) ||
       p.pix_key?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleCopyPixKey = async (pixKey: string) => {
-    if (!pixKey || pixKey.toLowerCase() === "não cadastrada" || pixKey.toLowerCase() === "nao cadastrada") return;
+    if (!isCopyablePixKey(pixKey)) return;
     await copyToClipboard(
       pixKey,
       () => addToast({ message: "Chave PIX copiada com sucesso!", type: "success" }),
@@ -201,72 +222,55 @@ export function PayoutsManagement() {
     );
   };
 
+  const openOrdersModal = (item: Payout) => {
+    const affiliateId = item.affiliates?.id || item.affiliate_id || "";
+
+    // periodStart: paid_at do último payout PAGO deste afiliado antes do atual
+    const lastPaid = payouts
+      .filter((p) => p.affiliate_id === affiliateId && p.status === "paid" && p.id !== item.id)
+      .sort(
+        (a, b) =>
+          new Date(b.paid_at ?? b.created_at ?? 0).getTime() -
+          new Date(a.paid_at ?? a.created_at ?? 0).getTime()
+      )[0];
+
+    // periodEnd: se o item já foi pago, usa paid_at; se pendente, sem limite
+    const periodEnd = item.status === "paid" && item.paid_at ? item.paid_at : null;
+
+    setOrdersModalAffiliate({
+      id: affiliateId,
+      name: item.affiliates?.name || "Afiliado",
+      periodStart: lastPaid?.paid_at ?? lastPaid?.created_at ?? null,
+      periodEnd,
+    });
+  };
+
   const columns: Column<Payout>[] = [
     {
       key: "affiliate",
       header: "Afiliado",
-      render: (item: any) => (
+      render: (item) => (
         <div>
-          <div style={{ fontWeight: 600, color: "var(--text-main)" }}>
-            {item.affiliates?.name || "Desconhecido"}
-          </div>
-          <div
-            style={{
-              fontSize: "12px",
-              color: "var(--text-muted)",
-              marginTop: "2px",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
+          <div className="font-semibold text-main">{item.affiliates?.name || "Desconhecido"}</div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
             {item.affiliates?.payout_method === "cupom" ? (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "2px 8px",
-                  borderRadius: "12px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  background: "rgba(245, 184, 191, 0.2)",
-                  color: "var(--pink-dark)",
-                }}
-              >
-                <FontAwesomeIcon icon={faTag} style={{ fontSize: "10px" }} />
+              <Badge tone="brand" className="text-[11px]">
+                <FontAwesomeIcon icon={faTag} className="text-[10px]" />
                 Retirada: Cupom na Loja
-              </span>
+              </Badge>
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  cursor: "pointer",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-xs text-muted"
+                title="Copiar chave PIX"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleCopyPixKey(item.pix_key);
                 }}
               >
                 PIX: {item.pix_key}
-                {item.pix_key && item.pix_key.toLowerCase() !== "não cadastrada" && item.pix_key.toLowerCase() !== "nao cadastrada" && (
-                  <button
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      padding: 0,
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                    title="Copiar chave PIX"
-                  >
-                    <FontAwesomeIcon icon={faCopy} style={{ fontSize: "12px" }} />
-                  </button>
-                )}
-              </div>
+                {isCopyablePixKey(item.pix_key) && <FontAwesomeIcon icon={faCopy} />}
+              </button>
             )}
           </div>
         </div>
@@ -276,54 +280,18 @@ export function PayoutsManagement() {
       key: "amount",
       header: "Valor",
       sortable: true,
-      render: (item) => (
-        <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
-          {formatCurrency(item.amount)}
-        </span>
-      ),
+      render: (item) => <span className="font-semibold text-main">{formatCurrency(item.amount)}</span>,
     },
     {
       key: "status",
       header: "Status",
       render: (item) => {
-        const styles: Record<string, any> = {
-          paid: {
-            bg: "rgba(34,197,94,0.12)",
-            color: "var(--success)",
-            label: "Pago",
-            icon: faCheckCircle,
-          },
-          pending: {
-            bg: "rgba(245,158,11,0.10)",
-            color: "var(--warning)",
-            label: "Pendente",
-            icon: faClock,
-          },
-          cancelled: {
-            bg: "rgba(239,68,68,0.10)",
-            color: "var(--error)",
-            label: "Cancelado",
-            icon: faTimesCircle,
-          },
-        };
-        const style = styles[item.status || "pending"];
+        const status = PAYOUT_STATUS[item.status || "pending"];
         return (
-          <span
-            style={{
-              padding: "4px 10px",
-              borderRadius: "12px",
-              fontSize: "12px",
-              fontWeight: 600,
-              background: style.bg,
-              color: style.color,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <FontAwesomeIcon icon={style.icon} style={{ fontSize: "11px" }} />
-            {style.label}
-          </span>
+          <Badge tone={status.tone}>
+            <FontAwesomeIcon icon={status.icon} className="text-[11px]" />
+            {status.label}
+          </Badge>
         );
       },
     },
@@ -332,9 +300,7 @@ export function PayoutsManagement() {
       header: "Solicitado em",
       sortable: true,
       render: (item) => (
-        <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>
-          {item.created_at ? formatDate(item.created_at, true) : "-"}
-        </span>
+        <span className="text-[13px] text-muted">{item.created_at ? formatDate(item.created_at, true) : "-"}</span>
       ),
     },
     {
@@ -342,9 +308,7 @@ export function PayoutsManagement() {
       header: "Pago em",
       sortable: true,
       render: (item) => (
-        <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>
-          {item.paid_at ? formatDate(item.paid_at, true) : "-"}
-        </span>
+        <span className="text-[13px] text-muted">{item.paid_at ? formatDate(item.paid_at, true) : "-"}</span>
       ),
     },
     {
@@ -352,101 +316,43 @@ export function PayoutsManagement() {
       header: "Ações",
       style: { width: "1%" },
       render: (item) => (
-        <div className="flex justify-center items-center gap-1">
+        <div className="flex items-center justify-center gap-1">
           {item.status === "pending" ? (
             <Button
               variant="success"
               circle
+              size="sm"
               loading={actionLoading === item.id}
-              style={{
-                minHeight: "32px",
-                minWidth: "32px",
-                width: "32px",
-                height: "32px",
-                fontSize: "12px",
-                padding: "0",
-              }}
               onClick={() => handleUpdateStatus(item.id, "paid")}
+              title="Marcar como pago"
             >
-              {actionLoading !== item.id && <FontAwesomeIcon icon={faDollar} />}
+              <FontAwesomeIcon icon={faDollar} />
             </Button>
           ) : item.status === "paid" ? (
             <Button
               variant="warning"
               circle
+              size="sm"
               loading={actionLoading === item.id}
-              style={{
-                minHeight: "32px",
-                minWidth: "32px",
-                width: "32px",
-                height: "32px",
-                fontSize: "12px",
-                padding: "0",
-              }}
               onClick={() => handleUpdateStatus(item.id, "pending")}
               title="Reverter para pendente"
             >
-              {actionLoading !== item.id && <FontAwesomeIcon icon={faUndo} />}
+              <FontAwesomeIcon icon={faUndo} />
             </Button>
           ) : null}
 
           <Button
             variant="danger"
             circle
+            size="sm"
             loading={actionLoading === item.id}
-            style={{
-              minHeight: "32px",
-              minWidth: "32px",
-              width: "32px",
-              height: "32px",
-              fontSize: "12px",
-              padding: "0",
-            }}
             onClick={() => handleDeletePayout(item.id)}
             title="Excluir pagamento"
           >
-            {actionLoading !== item.id && <FontAwesomeIcon icon={faTrash} />}
+            <FontAwesomeIcon icon={faTrash} />
           </Button>
 
-          <Button
-            variant="info"
-            circle
-            style={{
-              minHeight: "32px",
-              minWidth: "32px",
-              width: "32px",
-              height: "32px",
-              fontSize: "12px",
-              padding: "0",
-            }}
-            onClick={() => {
-              const affiliateId = (item as any).affiliates?.id || item.affiliate_id || "";
-
-              // periodStart: paid_at do último payout PAGO deste afiliado antes do atual
-              const prevPaidPayouts = payouts.filter(
-                (p) =>
-                  p.affiliate_id === affiliateId &&
-                  p.status === "paid" &&
-                  p.id !== item.id
-              );
-              const lastPaid = prevPaidPayouts.sort(
-                (a, b) =>
-                  new Date(b.paid_at ?? b.created_at ?? 0).getTime() -
-                  new Date(a.paid_at ?? a.created_at ?? 0).getTime()
-              )[0];
-
-              // periodEnd: se o item já foi pago, usa paid_at; se pendente, sem limite
-              const periodEnd = item.status === "paid" && item.paid_at ? item.paid_at : null;
-
-              setOrdersModalAffiliate({
-                id: affiliateId,
-                name: (item as any).affiliates?.name || "Afiliado",
-                periodStart: lastPaid?.paid_at ?? lastPaid?.created_at ?? null,
-                periodEnd,
-              });
-            }}
-            title="Ver vendas"
-          >
+          <Button variant="info" circle size="sm" onClick={() => openOrdersModal(item)} title="Ver vendas">
             <FontAwesomeIcon icon={faListAlt} />
           </Button>
         </div>
@@ -456,213 +362,48 @@ export function PayoutsManagement() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="page-title">Gestão de Pagamentos</h2>
-          <p className="page-subtitle">
-            Acompanhe e realize pagamentos para seus afiliados.
-          </p>
+          <p className="page-subtitle">Acompanhe e realize pagamentos para seus afiliados.</p>
         </div>
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <Button
-            onClick={() => setIsBatchModalOpen(true)}
-            style={{ width: "auto" }}
-            variant="info"
-            outline
-          >
-            <FontAwesomeIcon icon={faLayerGroup} style={{ marginRight: "8px" }} />
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={() => setIsBatchModalOpen(true)} className="w-auto px-6" variant="info" outline>
+            <FontAwesomeIcon icon={faLayerGroup} />
             Gerar Todos
           </Button>
-          <Button onClick={() => setIsModalOpen(true)} style={{ width: "auto" }}>
-            <FontAwesomeIcon icon={faPlus} style={{ marginRight: "8px" }} />
+          <Button onClick={() => setIsModalOpen(true)} className="w-auto px-6">
+            <FontAwesomeIcon icon={faPlus} />
             Gerar Pagamento
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card
-          style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}
-        >
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "12px",
-              background: "rgba(34,197,94,0.12)",
-              color: "var(--success)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-            }}
-          >
-            <FontAwesomeIcon icon={faCheckCircle} />
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
-              Total Pago
-            </p>
-            <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
-              {loadingSummary ? (
-                <Skeleton width="100px" height="24px" />
-              ) : (
-                formatCurrency(summary?.total_paid || 0)
-              )}
-            </h3>
-          </div>
-        </Card>
-
-        <Card
-          style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}
-        >
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "12px",
-              background: "rgba(245,158,11,0.10)",
-              color: "var(--warning)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-            }}
-          >
-            <FontAwesomeIcon icon={faClock} />
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
-              Pagamentos Pendentes
-            </p>
-            <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
-              {loadingSummary ? (
-                <Skeleton width="100px" height="24px" />
-              ) : (
-                formatCurrency(summary?.total_pending || 0)
-              )}
-            </h3>
-          </div>
-        </Card>
-
-        <Card
-          style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}
-        >
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "12px",
-              background: "rgba(59,130,246,0.10)",
-              color: "var(--info)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-            }}
-          >
-            <FontAwesomeIcon icon={faHandHoldingDollar} />
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
-              Total a Pagar (Geral)
-            </p>
-            <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
-              {loadingSummary ? (
-                <Skeleton width="100px" height="24px" />
-              ) : (
-                formatCurrency(summary?.pending_commission || 0)
-              )}
-            </h3>
-          </div>
-        </Card>
-
-        <Card
-          style={{ padding: "20px", display: "flex", alignItems: "center", gap: "16px" }}
-        >
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "12px",
-              background: "rgba(236, 72, 153, 0.1)",
-              color: "var(--pink-dark)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-            }}
-          >
-            <FontAwesomeIcon icon={faMoneyBillWave} />
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
-              Pagamentos Gerados
-            </p>
-            <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "700" }}>
-              {loadingSummary ? <Skeleton width="40px" height="24px" /> : payouts.length}
-            </h3>
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard icon={faCheckCircle} tone="green" label="Total Pago" loading={loadingSummary} value={formatCurrency(summary?.total_paid || 0)} />
+        <MetricCard icon={faClock} tone="amber" label="Pagamentos Pendentes" loading={loadingSummary} value={formatCurrency(summary?.total_pending || 0)} />
+        <MetricCard icon={faHandHoldingDollar} tone="blue" label="Total a Pagar (Geral)" loading={loadingSummary} value={formatCurrency(summary?.pending_commission || 0)} />
+        <MetricCard icon={faMoneyBillWave} tone="pink" label="Pagamentos Gerados" loading={loadingSummary} value={payouts.length} />
       </div>
 
-      <Card style={{ padding: "20px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "20px",
-            marginBottom: "20px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ display: "flex", gap: "12px", flex: 1, minWidth: "300px" }}>
+      <Card className="p-5">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-5">
+          <div className="min-w-[280px] flex-1 [&_.input-field-container]:mb-0">
             <Input
               placeholder="Buscar por afiliado ou PIX..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               icon={<FontAwesomeIcon icon={faSearch} />}
-              style={{ margin: 0 }}
             />
           </div>
 
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <span
-              style={{ fontSize: "14px", color: "var(--text-muted)", fontWeight: 500 }}
-            >
-              Filtrar Status:
-            </span>
-            <div
-              style={{
-                display: "flex",
-                background: "var(--sidebar-hover)",
-                padding: "4px",
-                borderRadius: "8px",
-                gap: "4px",
-              }}
-            >
-              {["", "pending", "paid"].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "6px",
-                    border: "none",
-                    background:
-                      statusFilter === status ? "var(--card-bg)" : "transparent",
-                    color:
-                      statusFilter === status ? "var(--text-main)" : "var(--text-muted)",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {status === "" ? "Todos" : status === "pending" ? "Pendentes" : "Pagos"}
-                </button>
-              ))}
-            </div>
+          <div className="w-full sm:w-[320px] [&_.input-field-container]:mb-0">
+            <SegmentedControl<PayoutStatusFilter>
+              label="Filtrar Status"
+              options={STATUS_FILTER_OPTIONS}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            />
           </div>
         </div>
 

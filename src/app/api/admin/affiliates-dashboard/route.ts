@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { AuthService } from "@/src/services/auth.service";
 import { getAffiliateDataStartDate, calculateOrderCommission } from "@/src/lib/utils";
+import type { AffiliateAchievement } from "@/src/types/achievements";
 
 export async function GET(request: Request) {
   try {
@@ -96,10 +97,10 @@ export async function GET(request: Request) {
       
       // Calculate total achievements (all time)
       // Group by month to deduplicate repeatable achievements per month
-      const processAchievements = (achList: any[]) => {
+      const processAchievements = (achList: AffiliateAchievement[]) => {
         let sum = 0;
         // Group by month-year
-        const groups: Record<string, any[]> = {};
+        const groups: Record<string, AffiliateAchievement[]> = {};
         achList.forEach(a => {
           const d = new Date(a.unlocked_at);
           const key = `${d.getFullYear()}-${d.getMonth()}`;

@@ -48,3 +48,30 @@ export interface DashboardSyncResult {
   shopify: StoreSyncResult | null;
   nuvemshop: StoreSyncResult | null;
 }
+
+/** Row of `order_items`. Mirrors the DB schema. */
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id: string | null; // FK products.id
+  /** Legacy snapshot — only filled when the item could not be linked to `products`. */
+  product_name: string | null;
+  variant_label: string | null;
+  quantity: number;
+  unit_price: number;
+  created_at: string | null;
+}
+
+// Shape of `order_items` selected with its linked product (query DTO).
+export type OrderItemSummary = Pick<OrderItem, "product_name" | "variant_label" | "quantity"> & {
+  unit_price?: number | null;
+  products: { name: string } | null;
+};
+
+export type OrderWithItems = Pick<
+  Orders,
+  "id" | "external_order_id" | "created_at" | "financial_status" | "total_amount" | "total_discounts" | "shipping_cost"
+> & {
+  coupon_code?: string | null;
+  order_items: OrderItemSummary[] | null;
+};

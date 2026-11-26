@@ -1,5 +1,6 @@
 import { getAuthenticatedAdmin } from "@/src/lib/auth/session";
 import { AffiliateRepository } from "@/src/repositories/affiliate.repository";
+import type { Coupon } from "@/src/types";
 import { NextRequest } from "next/server";
 
 /**
@@ -51,14 +52,12 @@ export async function POST(request: NextRequest) {
     const cleanCode = body.code.trim().toUpperCase();
 
     if (body.id) {
-      const updates: any = {
+      const updates: Partial<Coupon> = {
         code: cleanCode,
-        discount_percentage: body.discount_percentage !== undefined ? body.discount_percentage : undefined,
-        active: body.active !== undefined ? body.active : undefined,
-        affiliate_id: body.affiliate_id !== undefined ? body.affiliate_id : undefined,
+        ...(body.discount_percentage !== undefined && { discount_percentage: body.discount_percentage }),
+        ...(body.active !== undefined && { active: body.active }),
+        ...(body.affiliate_id !== undefined && { affiliate_id: body.affiliate_id }),
       };
-
-      Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
 
       const updated = await repo.updateCoupon(body.id, updates);
 

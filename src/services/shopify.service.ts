@@ -114,7 +114,10 @@ export class ShopifyService implements IStoreService {
       firstDiscountCode,
       discountCodes,
       lineItems: (order.line_items ?? []).map((li) => ({
-        title: li.title,
+        externalProductId: li.product_id ? String(li.product_id) : null,
+        productName: li.title,
+        variantLabel: li.variant_title || null,
+        imageUrl: null,
         quantity: li.quantity,
         price: li.price,
       })),
@@ -222,6 +225,11 @@ export class ShopifyService implements IStoreService {
     } catch {
       return null;
     }
+  }
+
+  /** AGENTS.md: Shopify API is only used for orders (and Shopify is past its sunset), so no product links. */
+  async getProductUrls(): Promise<Map<string, string>> {
+    return new Map();
   }
 }
 

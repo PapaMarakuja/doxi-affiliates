@@ -9,6 +9,7 @@ import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faXmark, faPlus } from "@fortawesome/free-solid-svg-icons";
 import type { Coupon } from "@/src/types";
+import { Table } from "@/src/components/ui/Table";
 
 interface CouponLinkModalProps {
   isOpen: boolean;
@@ -115,181 +116,81 @@ export function CouponLinkModal({
         size="lg"
         id="coupon-link-modal"
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* Filter and Create Button Area */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "16px" }}>
-            <div style={{ flex: 1 }}>
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="min-w-[220px] flex-1 [&_.input-field-container]:mb-0">
               <Input
                 label="Filtrar cupom por nome/código"
                 placeholder="Digite para filtrar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ margin: 0 }}
               />
             </div>
             <Button
-              variant="primary"
-              style={{ width: "auto", marginBottom: "20px" }}
+              className="w-auto px-5"
               onClick={() => {
                 setCouponToEdit(null);
                 setShowCreateModal(true);
               }}
               type="button"
             >
-              <FontAwesomeIcon icon={faPlus} style={{ marginRight: "8px" }} />
+              <FontAwesomeIcon icon={faPlus} />
               Cadastrar Novo Cupom
             </Button>
           </div>
 
-          {/* Table listing unlinked coupons */}
-          {loading ? (
-            <div
-              style={{
-                padding: "2rem",
-                textAlign: "center",
-                color: "var(--text-muted)",
-              }}
-            >
-              Carregando cupons...
-            </div>
-          ) : unlinkedCoupons.length === 0 ? (
-            <div
-              style={{
-                padding: "2rem",
-                textAlign: "center",
-                color: "var(--text-secondary, var(--text-muted))",
-                border: "1px dashed var(--border)",
-                borderRadius: "8px",
-              }}
-            >
-              Nenhum cupom disponível para vinculação.
-            </div>
-          ) : filteredCoupons.length === 0 ? (
-            <div
-              style={{
-                padding: "2rem",
-                textAlign: "center",
-                color: "var(--text-secondary, var(--text-muted))",
-                border: "1px dashed var(--border)",
-                borderRadius: "8px",
-              }}
-            >
-              Nenhum cupom encontrado para o filtro informado.
-            </div>
+          {!loading && unlinkedCoupons.length === 0 ? (
+            <div className="empty-dashed">Nenhum cupom disponível para vinculação.</div>
           ) : (
-            <div
-              style={{
-                overflowX: "auto",
-                borderRadius: "12px",
-                border: "1px solid var(--border)",
-                background: "var(--card-bg)",
-              }}
-            >
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  textAlign: "left",
-                }}
-              >
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: "1px solid var(--border)",
-                      background: "var(--hover)",
-                    }}
-                  >
-                    <th className="table-th-text" style={thStyle}>
-                      Code
-                    </th>
-                    <th className="table-th-text" style={thStyle}>
-                      Percentual
-                    </th>
-                    <th className="table-th-text" style={thStyle}>
-                      Ativo
-                    </th>
-                    <th className="table-th-text" style={{ ...thStyle, textAlign: "center" }}>
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCoupons.map((coupon) => (
-                    <tr
-                      key={coupon.id}
-                      className="table-row-hover"
-                      style={{
-                        borderBottom: "1px solid var(--border)",
-                        transition: "background 0.2s",
-                      }}
-                    >
-                      <td style={tdStyle}>
-                        <span
-                          style={{
-                            fontWeight: 600,
-                            letterSpacing: "0.3px",
-                          }}
-                        >
-                          {coupon.code}
-                        </span>
-                      </td>
-                      <td style={tdStyle}>
-                        {coupon.discount_percentage != null
-                          ? `${coupon.discount_percentage}%`
-                          : "—"}
-                      </td>
-                      <td style={tdStyle}>
-                        {coupon.active ? (
-                          <FontAwesomeIcon
-                            icon={faCheck}
-                            style={{ color: "var(--success)", fontSize: "16px" }}
-                          />
-                        ) : (
-                          <FontAwesomeIcon
-                            icon={faXmark}
-                            style={{ color: "var(--error)", fontSize: "16px" }}
-                          />
-                        )}
-                      </td>
-                      <td style={{ ...tdStyle }}>
-                        <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                          <Button
-                            variant="primary"
-                            outline
-                            style={{
-                              width: "auto",
-                              padding: "6px 12px",
-                              fontSize: "13px",
-                              minHeight: "unset",
-                            }}
-                            onClick={() => handleLink(coupon.id)}
-                            loading={linkingId === coupon.id}
-                            disabled={linkingId !== null}
-                            type="button"
-                          >
-                            Vincular
-                          </Button>
-                          <Button
-                            variant="info"
-                            outline
-                            style={{
-                              width: "auto",
-                              padding: "6px 12px",
-                              fontSize: "13px",
-                              minHeight: "unset",
-                            }}
-                            onClick={() => handleEdit(coupon)}
-                            type="button"
-                          >
-                            Editar
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table
+              key={searchTerm}
+              data={filteredCoupons}
+              loading={loading}
+              compact
+              emptyMessage="Nenhum cupom encontrado para o filtro informado."
+              columns={[
+                {
+                  key: "code",
+                  header: "Code",
+                  render: (coupon) => <span className="font-semibold tracking-wide">{coupon.code}</span>,
+                },
+                {
+                  key: "discount_percentage",
+                  header: "Percentual",
+                  render: (coupon) => (coupon.discount_percentage != null ? `${coupon.discount_percentage}%` : "—"),
+                },
+                {
+                  key: "active",
+                  header: "Ativo",
+                  render: (coupon) => coupon.active
+                    ? <FontAwesomeIcon icon={faCheck} className="text-base text-success" />
+                    : <FontAwesomeIcon icon={faXmark} className="text-base text-danger" />,
+                },
+                {
+                  key: "actions",
+                  header: "Ações",
+                  style: { width: "1%" },
+                  render: (coupon) => (
+                    <div className="flex justify-center gap-2">
+                      <Button
+                        outline
+                        size="sm"
+                        className="w-auto"
+                        onClick={() => handleLink(coupon.id)}
+                        loading={linkingId === coupon.id}
+                        disabled={linkingId !== null}
+                        type="button"
+                      >
+                        Vincular
+                      </Button>
+                      <Button variant="info" outline size="sm" className="w-auto" onClick={() => handleEdit(coupon)} type="button">
+                        Editar
+                      </Button>
+                    </div>
+                  ),
+                },
+              ]}
+            />
           )}
         </div>
       </Modal>
@@ -307,18 +208,3 @@ export function CouponLinkModal({
     </>
   );
 }
-
-const thStyle: React.CSSProperties = {
-  padding: "14px 16px",
-  fontWeight: 600,
-  color: "var(--text-muted)",
-  fontSize: "12px",
-  textTransform: "uppercase",
-  letterSpacing: "0.5px",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "14px 16px",
-  color: "var(--text-main)",
-  fontSize: "14px",
-};

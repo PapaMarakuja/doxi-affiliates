@@ -7,7 +7,9 @@ import { Button } from "@/src/components/ui/Button";
 import { Skeleton } from "@/src/components/ui/Skeleton";
 import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { formatCurrency, formatDate } from "@/src/lib/utils";
+import { copyToClipboard, formatCurrency, formatDate } from "@/src/lib/utils";
+import type { Affiliate } from "@/src/types";
+import type { AffiliateOwedCalculation } from "@/src/types/payout";
 import { faWallet, faMoneyBillTransfer, faClock, faShoppingBag, faCopy, faListAlt, faTag } from "@fortawesome/free-solid-svg-icons";
 import { AffiliateOrdersModal } from "@/src/components/ui/AffiliateOrdersModal";
 
@@ -18,9 +20,9 @@ interface PayoutCreateModalProps {
 }
 
 export function PayoutCreateModal({ isOpen, onClose, onSuccess }: PayoutCreateModalProps) {
-  const [affiliates, setAffiliates] = useState<any[]>([]);
+  const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
   const [selectedAffiliateId, setSelectedAffiliateId] = useState<string | null>(null);
-  const [calculationData, setCalculationData] = useState<any>(null);
+  const [calculationData, setCalculationData] = useState<AffiliateOwedCalculation | null>(null);
   const [loadingAffiliates, setLoadingAffiliates] = useState(false);
   const [loadingCalculation, setLoadingCalculation] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,9 +55,9 @@ export function PayoutCreateModal({ isOpen, onClose, onSuccess }: PayoutCreateMo
       }
       const result = await res.json();
       setAffiliates(result.data || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("[PayoutCreateModal] fetchAffiliates error:", err);
-      addToast({ message: err.message || "Erro ao carregar afiliados", type: "error" });
+      addToast({ message: err instanceof Error ? err.message : "Erro ao carregar afiliados", type: "error" });
     } finally {
       setLoadingAffiliates(false);
     }
@@ -72,7 +74,7 @@ export function PayoutCreateModal({ isOpen, onClose, onSuccess }: PayoutCreateMo
       } else {
         addToast({ message: result?.error || `Erro ${res.status} ao calcular valores`, type: "error" });
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[PayoutCreateModal] fetchCalculation error:", err);
       addToast({ message: "Erro de conexão ao calcular valores", type: "error" });
     } finally {
@@ -108,8 +110,8 @@ export function PayoutCreateModal({ isOpen, onClose, onSuccess }: PayoutCreateMo
       } else {
         throw new Error(result?.error || `Erro ${res.status} ao gerar pagamento`);
       }
-    } catch (err: any) {
-      addToast({ message: err.message || "Erro de conexão", type: "error" });
+    } catch (err) {
+      addToast({ message: err instanceof Error ? err.message : "Erro de conexão", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -129,8 +131,8 @@ export function PayoutCreateModal({ isOpen, onClose, onSuccess }: PayoutCreateMo
             placeholder="Busque por nome..."
             options={affiliateOptions}
             value={selectedAffiliateId}
-            onChange={(val) => setSelectedAffiliateId(val)}
-            icon={<FontAwesomeIcon icon={faWallet} style={{ color: "var(--pink-dark)" }} />}
+            onChange={(val) => setSelectedAffiliateId(val as string | null)}
+            icon={<FontAwesomeIcon icon={faWallet} className="text-brand" />}
             appendTo="body"
           />
 
@@ -144,110 +146,98 @@ export function PayoutCreateModal({ isOpen, onClose, onSuccess }: PayoutCreateMo
           {calculationData && !loadingCalculation && (
             <div className="flex flex-col gap-6">
               {calculationData.payoutMethod === "cupom" ? (
-                <div style={{ padding: "16px", background: "rgba(245, 184, 191, 0.15)", borderRadius: "12px", border: "1px solid var(--pink-dark)", display: "flex", alignItems: "center", gap: "16px" }}>
-                  <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--pink-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div className="callout items-center">
+                  <div className="icon-tile icon-tile--sm rounded-full bg-brand text-white">
                     <FontAwesomeIcon icon={faTag} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: "12px", color: "var(--pink-dark)", fontWeight: 700, textTransform: "uppercase" }}>Opção de Retirada: Cupom na Loja</p>
-                    <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "var(--text-main)", marginTop: "2px" }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold uppercase text-brand">Opção de Retirada: Cupom na Loja</p>
+                    <p className="mt-0.5 text-sm font-semibold">
                       Este afiliado prefere receber em Cupom. Todo dia 10, emita e encaminhe o cupom no valor calculado.
                     </p>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: "16px", background: "var(--info-bg)", borderRadius: "12px", border: "1px solid var(--info-border)", display: "flex", alignItems: "center", gap: "16px" }}>
-                  <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--info)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div className="callout callout--info items-center">
+                  <div className="icon-tile icon-tile--sm rounded-full bg-info text-white">
                     <FontAwesomeIcon icon={faWallet} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: "12px", color: "var(--info-text)", opacity: 0.8 }}>Chave PIX para Transferência</p>
-                    <p style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "var(--info-text)", wordBreak: "break-all" }}>{calculationData.pixKey}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted">Chave PIX para Transferência</p>
+                    <p className="break-all text-base font-bold text-info">{calculationData.pixKey}</p>
                   </div>
                   {calculationData.pixKey && calculationData.pixKey !== "Não cadastrada" && (
-                    <button
+                    <Button
+                      variant="info"
+                      size="sm"
+                      className="w-auto"
                       title="Copiar chave PIX"
-                      onClick={() => {
-                        navigator.clipboard.writeText(calculationData.pixKey);
-                        addToast({ message: "Chave PIX copiada!", type: "success" });
-                      }}
-                      style={{
-                        background: "var(--info)", border: "none", borderRadius: "8px",
-                        color: "#fff", cursor: "pointer", padding: "8px 10px",
-                        display: "flex", alignItems: "center", gap: "6px", fontSize: "12px",
-                        fontWeight: 600, flexShrink: 0,
-                      }}
+                      onClick={() => copyToClipboard(calculationData.pixKey, () => addToast({ message: "Chave PIX copiada!", type: "success" }))}
                     >
                       <FontAwesomeIcon icon={faCopy} />
                       Copiar
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
-                <div style={{ padding: "16px", background: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-                  <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px" }}>Comissão Vendas</p>
-                  <p style={{ margin: 0, fontSize: "18px", fontWeight: "600", color: "var(--text-main)" }}>{formatCurrency(calculationData.baseCommission)}</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="soft-panel">
+                  <p className="metric-label mb-1 text-xs">Comissão Vendas</p>
+                  <p className="text-lg font-semibold text-main">{formatCurrency(calculationData.baseCommission)}</p>
                 </div>
-                <div style={{ padding: "16px", background: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-                  <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px" }}>Conquistas</p>
-                  <p style={{ margin: 0, fontSize: "18px", fontWeight: "600", color: "var(--text-main)" }}>{formatCurrency(calculationData.achievementsCommission)}</p>
+                <div className="soft-panel">
+                  <p className="metric-label mb-1 text-xs">Conquistas</p>
+                  <p className="text-lg font-semibold text-main">{formatCurrency(calculationData.achievementsCommission)}</p>
                 </div>
-                <div style={{ padding: "16px", background: "var(--warning-bg)", borderRadius: "12px", border: "1px solid var(--warning-border, var(--warning-text))" }}>
-                  <p style={{ margin: 0, fontSize: "12px", color: "var(--warning-text)", marginBottom: "4px", opacity: 0.85 }}>Já pago/pendente</p>
-                  <p style={{ margin: 0, fontSize: "18px", fontWeight: "600", color: "var(--warning-text)" }}>{formatCurrency(calculationData.alreadyPaid)}</p>
+                <div className="callout callout--warning block p-4">
+                  <p className="mb-1 text-xs text-warning">Já pago/pendente</p>
+                  <p className="text-lg font-semibold text-warning">{formatCurrency(calculationData.alreadyPaid)}</p>
                   {calculationData.lastPayoutDate && (
-                    <p style={{ margin: "4px 0 0", fontSize: "10px", color: "var(--warning-text)", opacity: 0.75 }}>
+                    <p className="mt-1 text-[10px] text-warning opacity-75">
                       Último: {formatDate(calculationData.lastPayoutDate)}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div style={{ padding: "20px", background: "var(--card-bg)", borderRadius: "12px", border: "2px dashed var(--pink-light)", textAlign: "center" }}>
-                <p style={{ margin: 0, fontSize: "14px", color: "var(--text-muted)", marginBottom: "8px" }}>Total Geral a Pagar</p>
-                <h3 style={{ margin: 0, fontSize: "32px", fontWeight: "800", color: "var(--pink-dark)" }}>{formatCurrency(calculationData.owed)}</h3>
+              <div className="rounded-xl border-2 border-dashed border-[var(--pink-light)] bg-card p-5 text-center">
+                <p className="metric-label mb-2 text-sm">Total Geral a Pagar</p>
+                <h3 className="text-[32px] font-extrabold text-brand">{formatCurrency(calculationData.owed)}</h3>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-muted)", fontSize: "13px" }}>
-                    <FontAwesomeIcon icon={faShoppingBag} style={{ width: "14px" }} />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col gap-1.5 text-[13px] text-muted">
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faShoppingBag} className="w-3.5" />
                     <span>{calculationData.orderCount} pedidos realizados no período</span>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-muted)", fontSize: "13px" }}>
-                    <FontAwesomeIcon icon={faClock} style={{ width: "14px" }} />
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faClock} className="w-3.5" />
                     <span>Último pagamento: {calculationData.lastPayoutDate ? formatDate(calculationData.lastPayoutDate) : "Nenhum"}</span>
                   </div>
                 </div>
-                <Button
-                  variant="info"
-                  outline
-                  style={{ width: "auto", fontSize: "13px" }}
-                  onClick={() => setShowOrdersModal(true)}
-                >
-                  <FontAwesomeIcon icon={faListAlt} style={{ marginRight: "6px" }} />
+                <Button variant="info" outline size="sm" className="w-auto" onClick={() => setShowOrdersModal(true)}>
+                  <FontAwesomeIcon icon={faListAlt} />
                   Ver Vendas
                 </Button>
               </div>
 
-              <div style={{ marginTop: "8px" }}>
-                <Button
-                  onClick={handleCreatePayout}
-                  loading={saving}
-                  disabled={calculationData.owed <= 0}
-                  style={{ height: "54px", fontSize: "16px" }}
-                >
-                  <FontAwesomeIcon icon={faMoneyBillTransfer} style={{ marginRight: "10px" }} />
-                  Gerar Pagamento
-                </Button>
-              </div>
+              <Button
+                size="lg"
+                className="mt-2"
+                onClick={handleCreatePayout}
+                loading={saving}
+                disabled={calculationData.owed <= 0}
+              >
+                <FontAwesomeIcon icon={faMoneyBillTransfer} />
+                Gerar Pagamento
+              </Button>
             </div>
           )}
 
           {!selectedAffiliateId && !loadingAffiliates && (
-            <div style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)", background: "var(--card-bg)", borderRadius: "12px", border: "1px dashed var(--border)" }}>
+            <div className="empty-dashed p-10">
               Selecione um afiliado para calcular os valores pendentes.
             </div>
           )}

@@ -17,7 +17,9 @@ import {
   ACHIEVEMENT_METRIC_OPTIONS
 } from "@/src/lib/achievements/achievementMappings";
 
-import type { AchievementDefinition } from "@/src/types/achievements";
+import type { AchievementDefinition, AffiliateDashboardRow, AffiliatesDashboardData } from "@/src/types/achievements";
+import { Badge } from "@/src/components/ui/Badge";
+import { formatCurrency } from "@/src/lib/utils";
 import { AchievementModal } from "./AchievementModal";
 import { AdminAffiliateDetailModal } from "./AdminAffiliateDetailModal";
 import { Select } from "@/src/components/ui/Select";
@@ -35,7 +37,7 @@ export default function GerenciarConquistasPage() {
   const [filterMetric, setFilterMetric] = useState<string | null>(null);
 
   // State Affiliates Dashboard
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<AffiliatesDashboardData | null>(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
   const [affiliateSearch, setAffiliateSearch] = useState("");
 
@@ -48,7 +50,7 @@ export default function GerenciarConquistasPage() {
 
   // Detail Modal
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [selectedAffiliate, setSelectedAffiliate] = useState<any>(null);
+  const [selectedAffiliate, setSelectedAffiliate] = useState<AffiliateDashboardRow | null>(null);
 
   const fetchDefinitions = useCallback(async () => {
     setLoadingDefs(true);
@@ -109,14 +111,14 @@ export default function GerenciarConquistasPage() {
       } else {
         throw new Error("Erro ao excluir");
       }
-    } catch (err: any) {
-      addToast({ message: err.message, type: "error" });
+    } catch (err) {
+      addToast({ message: err instanceof Error ? err.message : "Erro ao excluir", type: "error" });
     }
   };
 
   const defColumns: Column<AchievementDefinition>[] = [
     { key: "title", header: "Título", sortable: true },
-    { key: "description", header: "Descrição", sortable: true },
+    { key: "description", header: "Descrição", sortable: true, wrap: true },
     {
       key: "metric",
       header: "Métrica",
@@ -128,10 +130,7 @@ export default function GerenciarConquistasPage() {
       header: "Meta",
       sortable: true,
       render: (item) => {
-        const isCurrency = item.metric.includes("commission");
-        if (isCurrency) {
-          return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.goal);
-        }
+        if (item.metric.includes("commission")) return formatCurrency(item.goal);
         return `${item.goal} ${item.goal === 1 ? "venda" : "vendas"}`;
       }
     },
@@ -147,9 +146,9 @@ export default function GerenciarConquistasPage() {
       key: "color_hex",
       header: "Cor",
       render: (item) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: item.color_hex || "#ccc", border: "1px solid var(--border)" }} />
-          <span style={{ fontFamily: "monospace" }}>{item.color_hex}</span>
+        <div className="flex items-center gap-2">
+          <span className="color-swatch" style={{ background: item.color_hex || "#ccc" }} />
+          <span className="font-mono">{item.color_hex}</span>
         </div>
       )
     },
@@ -157,14 +156,14 @@ export default function GerenciarConquistasPage() {
       key: "actions",
       header: "Ações",
       render: (item) => (
-        <div style={{ display: "flex", gap: "8px" }}>
-          <Button variant="info" circle onClick={() => {
+        <div className="flex gap-2">
+          <Button variant="info" circle title="Editar" onClick={() => {
             setEditingDef(item);
             setIsModalOpen(true);
           }}>
             <FontAwesomeIcon icon={faPen} />
           </Button>
-          <Button variant="danger" circle onClick={() => handleDeleteDef(item.id)}>
+          <Button variant="danger" circle title="Excluir" onClick={() => handleDeleteDef(item.id)}>
             <FontAwesomeIcon icon={faTrash} />
           </Button>
         </div>
@@ -181,25 +180,21 @@ export default function GerenciarConquistasPage() {
     });
   }, [definitions, filterTitle, filterDesc, filterMetric]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-  };
-
   const filteredAffiliates = useMemo(() => {
     if (!dashboardData?.affiliates) return [];
     if (!affiliateSearch.trim()) return dashboardData.affiliates;
     const lower = affiliateSearch.toLowerCase();
-    return dashboardData.affiliates.filter((a: any) => a.name?.toLowerCase().includes(lower));
+    return dashboardData.affiliates.filter((a) => a.name?.toLowerCase().includes(lower));
   }, [dashboardData, affiliateSearch]);
 
-  const dashboardColumns: Column<any>[] = [
+  const dashboardColumns: Column<AffiliateDashboardRow>[] = [
     {
       key: "affiliate",
       header: "Afiliado",
       render: (item) => (
         <div>
-          <div style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.name}</div>
-          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
+          <div className="font-semibold text-main">{item.name}</div>
+          <div className="mt-1 text-xs text-muted">
             {item.commission_rate}% comissão · {item.active_achievements_month} conquistas ativas
           </div>
         </div>
@@ -209,7 +204,7 @@ export default function GerenciarConquistasPage() {
       key: "orders_month",
       header: "Pedidos mês",
       sortable: true,
-      render: (item) => <span style={{ fontWeight: 500 }}>{item.orders_month}</span>
+      render: (item) => <span className="font-medium">{item.orders_month}</span>
     },
     {
       key: "total_month",
@@ -217,8 +212,8 @@ export default function GerenciarConquistasPage() {
       sortable: true,
       render: (item) => (
         <div>
-          <div style={{ fontWeight: 600, color: "var(--text-main)" }}>{formatCurrency(item.total_month)}</div>
-          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
+          <div className="font-semibold text-main">{formatCurrency(item.total_month)}</div>
+          <div className="mt-1 text-xs text-muted">
             Base {formatCurrency(item.base_month)} + R$ {item.achievements_month} conquistas
           </div>
         </div>
@@ -228,39 +223,22 @@ export default function GerenciarConquistasPage() {
       key: "total_all_time",
       header: "Comissão total",
       sortable: true,
-      render: (item) => <span style={{ fontWeight: 500 }}>{formatCurrency(item.total_all_time)}</span>
+      render: (item) => <span className="font-medium">{formatCurrency(item.total_all_time)}</span>
     },
     {
       key: "to_pay",
       header: "A pagar",
       sortable: true,
-      render: (item) => {
-        if (item.to_pay > 0) {
-          return (
-            <span style={{
-              color: "var(--warning-text)", background: "var(--warning-bg)",
-              padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: 600
-            }}>
-              {formatCurrency(item.to_pay)}
-            </span>
-          );
-        }
-        return (
-          <span style={{
-            color: "var(--success-text)", background: "var(--success-bg)",
-            padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: 600
-          }}>
-            Pago
-          </span>
-        );
-      }
+      render: (item) => item.to_pay > 0
+        ? <Badge tone="warning">{formatCurrency(item.to_pay)}</Badge>
+        : <Badge tone="success">Pago</Badge>
     },
     {
       key: "last_payout",
       header: "Último pagamento",
       sortable: true,
       render: (item) => (
-        <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>
+        <span className="text-[13px] text-muted">
           {item.last_payout_date ? new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' }).format(new Date(item.last_payout_date)) : '-'}
         </span>
       )
@@ -269,7 +247,7 @@ export default function GerenciarConquistasPage() {
       key: "actions",
       header: "Ações",
       render: (item) => (
-        <Button variant="transparent" outline={true} style={{ padding: "6px 12px", width: "auto" }} onClick={() => {
+        <Button variant="transparent" outline size="sm" className="w-auto" onClick={() => {
           setSelectedAffiliate(item);
           setIsDetailModalOpen(true);
         }}>
@@ -279,31 +257,57 @@ export default function GerenciarConquistasPage() {
     }
   ];
 
+  const summary = dashboardData?.summary;
+  const summaryCards = [
+    {
+      label: "Comissão total do mês",
+      valueClassName: "text-success",
+      value: summary && formatCurrency(summary.total_month),
+      hint: summary && `Base ${formatCurrency(summary.base_month)} + conquistas ${formatCurrency(summary.achievements_month)}`,
+    },
+    {
+      label: "Pedidos no mês",
+      value: summary?.orders_month,
+      hint: summary && (summary.orders_growth > 0 ? `+${summary.orders_growth.toFixed(0)}% vs mês anterior` : "Mês atual"),
+    },
+    {
+      label: "Afiliados ativos",
+      valueClassName: "text-info",
+      value: summary?.active_affiliates,
+      hint: summary && `de ${summary.total_affiliates} cadastrados`,
+    },
+    {
+      label: "Aguardando pagamento",
+      value: summary && formatCurrency(summary.pending_payouts),
+      hint: summary && `${summary.affiliates_with_pending_payouts} afiliados`,
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-8">
-      <Card style={{ display: "flex", gap: "16px", background: "var(--card-bg)", padding: "16px" }}>
+      <Card className="flex gap-4 p-4">
         <Button
           variant={activeTab === "definitions" ? "primary" : "transparent"}
           onClick={() => setActiveTab("definitions")}
-          style={{ width: "auto" }}
+          className="w-auto gap-2 px-5"
         >
-          <FontAwesomeIcon icon={faTrophy} style={{ marginRight: "8px" }} />
+          <FontAwesomeIcon icon={faTrophy} />
           Conquistas
         </Button>
         <Button
           variant={activeTab === "affiliates" ? "primary" : "transparent"}
           onClick={() => setActiveTab("affiliates")}
-          style={{ width: "auto" }}
+          className="w-auto gap-2 px-5"
         >
-          <FontAwesomeIcon icon={faUsers} style={{ marginRight: "8px" }} />
+          <FontAwesomeIcon icon={faUsers} />
           Afiliados
         </Button>
       </Card>
 
       {activeTab === "definitions" && (
         <>
-          <Card style={{ marginBottom: "24px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+          <Card>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
               <Input
                 label="Título"
                 placeholder="Ex: Top Vendedor"
@@ -321,21 +325,21 @@ export default function GerenciarConquistasPage() {
                 placeholder="Todas as métricas"
                 options={ACHIEVEMENT_METRIC_OPTIONS}
                 value={filterMetric}
-                onChange={(val) => setFilterMetric(val)}
+                onChange={(val) => setFilterMetric(val as string | null)}
               />
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-start", gap: "16px", marginTop: "16px" }}>
-              <Button onClick={() => {
+            <div className="mt-4 flex flex-wrap gap-4">
+              <Button className="w-auto gap-2 px-5" onClick={() => {
                 setEditingDef(null);
                 setIsModalOpen(true);
-              }} style={{ width: "auto" }}>
-                <FontAwesomeIcon icon={faPlus} style={{ marginRight: "8px" }} />
+              }}>
+                <FontAwesomeIcon icon={faPlus} />
                 Nova Conquista
               </Button>
 
               <Button
                 variant="transparent"
-                style={{ width: "auto", color: "var(--text-muted)" }}
+                className="w-auto px-5 text-muted"
                 onClick={() => { setFilterTitle(""); setFilterDesc(""); setFilterMetric(null); }}
               >
                 Limpar Filtros
@@ -351,73 +355,28 @@ export default function GerenciarConquistasPage() {
 
       {activeTab === "affiliates" && (dashboardData || loadingDashboard) && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
-            <div style={{ padding: "20px", background: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-              <p style={{ margin: 0, fontSize: "14px", color: "var(--text-muted)", marginBottom: "8px" }}>Comissão total do mês</p>
-              <h3 style={{ margin: 0, fontSize: "24px", color: "var(--success)" }}>
-                {loadingDashboard ? <Skeleton width="120px" height="30px" /> : formatCurrency(dashboardData.summary.total_month)}
-              </h3>
-              <div style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", marginTop: "6px" }}>
-                {loadingDashboard ? (
-                  <Skeleton width="100%" height="14px" />
-                ) : (
-                  `Base ${formatCurrency(dashboardData.summary.base_month)} + conquistas ${formatCurrency(dashboardData.summary.achievements_month)}`
-                )}
-              </div>
-            </div>
-
-            <div style={{ padding: "20px", background: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-              <p style={{ margin: 0, fontSize: "14px", color: "var(--text-muted)", marginBottom: "8px" }}>Pedidos no mês</p>
-              <h3 style={{ margin: 0, fontSize: "24px", color: "var(--text-main)" }}>
-                {loadingDashboard ? <Skeleton width="60px" height="30px" /> : dashboardData.summary.orders_month}
-              </h3>
-              <div style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", marginTop: "6px" }}>
-                {loadingDashboard ? (
-                  <Skeleton width="80px" height="14px" />
-                ) : (
-                  `${dashboardData.summary.orders_growth > 0 ? `+${dashboardData.summary.orders_growth.toFixed(0)}% vs mês anterior` : "Mês atual"}`
-                )}
-              </div>
-            </div>
-
-            <div style={{ padding: "20px", background: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-              <p style={{ margin: 0, fontSize: "14px", color: "var(--text-muted)", marginBottom: "8px" }}>Afiliados ativos</p>
-              <h3 style={{ margin: 0, fontSize: "24px", color: "var(--info)" }}>
-                {loadingDashboard ? <Skeleton width="60px" height="30px" /> : dashboardData.summary.active_affiliates}
-              </h3>
-              <div style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", marginTop: "6px" }}>
-                {loadingDashboard ? (
-                  <Skeleton width="100px" height="14px" />
-                ) : (
-                  `de ${dashboardData.summary.total_affiliates} cadastrados`
-                )}
-              </div>
-            </div>
-
-            <div style={{ padding: "20px", background: "var(--card-bg)", borderRadius: "12px", border: "1px solid var(--border)" }}>
-              <p style={{ margin: 0, fontSize: "14px", color: "var(--text-muted)", marginBottom: "8px" }}>Aguardando pagamento</p>
-              <h3 style={{ margin: 0, fontSize: "24px", color: "var(--text-main)" }}>
-                {loadingDashboard ? <Skeleton width="120px" height="30px" /> : formatCurrency(dashboardData.summary.pending_payouts)}
-              </h3>
-              <div style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", marginTop: "6px" }}>
-                {loadingDashboard ? (
-                  <Skeleton width="60px" height="14px" />
-                ) : (
-                  `${dashboardData.summary.affiliates_with_pending_payouts} afiliados`
-                )}
-              </div>
-            </div>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+            {summaryCards.map((card) => (
+              <Card key={card.label} className="metric-card block">
+                <div className="metric-label">{card.label}</div>
+                <div className={`metric-value ${card.valueClassName ?? ""}`}>
+                  {loadingDashboard ? <Skeleton width="120px" height="30px" /> : card.value}
+                </div>
+                <div className="metric-hint mt-1.5">
+                  {loadingDashboard ? <Skeleton width="100px" height="14px" /> : card.hint}
+                </div>
+              </Card>
+            ))}
           </div>
 
-          <Card style={{ padding: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
-              <h3 style={{ fontSize: "16px", margin: 0, color: "var(--text-main)", fontWeight: 600 }}>Filtros de Busca</h3>
-              <div style={{ flex: 1, maxWidth: "400px", display: "flex", justifyContent: "flex-end" }}>
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <h3 className="section-title text-base">Filtros de Busca</h3>
+              <div className="w-full max-w-[400px] flex-1 [&_.input-field-container]:mb-0">
                 <Input
                   placeholder="Buscar afiliado..."
                   value={affiliateSearch}
                   onChange={(e) => setAffiliateSearch(e.target.value)}
-                  style={{ margin: 0, width: "100%" }}
                 />
               </div>
             </div>

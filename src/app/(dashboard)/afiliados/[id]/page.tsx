@@ -14,34 +14,28 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCheck,
   faXmark,
-  faEnvelope,
-  faPhone,
   faUser,
   faShieldHalved,
   faPen,
   faUnlink,
   faSave,
   faArrowLeft,
-  faIdCard,
-  faRandom,
-  faChevronDown,
-  faRotate,
   faCopy,
-  faTimes,
   faTag,
   faMoneyBillTransfer,
 } from '@fortawesome/free-solid-svg-icons';
-import type { Affiliate, Coupon, Profile, ProfileWithEmail, PayoutMethod } from '@/src/types';
+import type { Affiliate, Coupon, ProfileWithEmail, PayoutMethod } from '@/src/types';
 import { returnRole } from '@/src/lib/utils';
 import { useConfirmDialog } from '@/src/contexts/ConfirmDialogContext';
-import { applyPixMask, guessPixType, maskPhone } from '@/src/lib/masks';
+import { maskPhone } from "@/src/lib/masks";
+import { Badge } from "@/src/components/ui/Badge";
+import { PixKeyInput } from "@/src/components/ui/PixKeyInput";
+import { SegmentedControl, SegmentedOption } from "@/src/components/ui/SegmentedControl";
 
-const PIX_TYPES = [
-  { value: "cpf_cnpj", label: "CPF/CNPJ", icon: faIdCard },
-  { value: "phone", label: "Celular", icon: faPhone },
-  { value: "email", label: "E-mail", icon: faEnvelope },
-  { value: "random", label: "Aleatória", icon: faRandom }
-] as const;
+const PAYOUT_OPTIONS: SegmentedOption<PayoutMethod>[] = [
+  { value: "pix", label: "PIX", icon: faMoneyBillTransfer },
+  { value: "cupom", label: "CUPOM", icon: faTag },
+];
 
 export default function AfiliadoEditPage() {
   const { id } = useParams() as { id: string };
@@ -70,7 +64,6 @@ export default function AfiliadoEditPage() {
   const [contactPhone, setContactPhone] = useState('');
   const [payoutMethod, setPayoutMethod] = useState<PayoutMethod>('pix');
   const [pixKey, setPixKey] = useState('');
-  const [manualPixType, setManualPixType] = useState<'cpf_cnpj' | 'phone' | 'email' | 'random' | null>(null);
 
   // Modal states
   const [showLinkCouponModal, setShowLinkCouponModal] = useState(false);
@@ -310,21 +303,9 @@ export default function AfiliadoEditPage() {
       sortable: false,
       render: (item) =>
         item.active ? (
-          <span style={{ color: 'var(--success)' }}>
-            Ativo{' '}
-            <FontAwesomeIcon
-              icon={faCheck}
-              style={{ color: 'var(--success)', fontSize: '16px' }}
-            />
-          </span>
+          <Badge tone="success"><FontAwesomeIcon icon={faCheck} /> Ativo</Badge>
         ) : (
-          <span style={{ color: 'var(--error)' }}>
-            Inativo{' '}
-            <FontAwesomeIcon
-              icon={faXmark}
-              style={{ color: 'var(--error)', fontSize: '16px' }}
-            />
-          </span>
+          <Badge tone="danger"><FontAwesomeIcon icon={faXmark} /> Inativo</Badge>
         ),
     },
     {
@@ -341,7 +322,7 @@ export default function AfiliadoEditPage() {
             onClick={() => handleEditCoupon(item)}
             title="Editar Cupom"
           >
-            <FontAwesomeIcon icon={faPen} style={{ fontSize: "11px" }} />
+            <FontAwesomeIcon icon={faPen} className="text-[11px]" />
           </Button>
 
           <Button
@@ -351,7 +332,7 @@ export default function AfiliadoEditPage() {
             onClick={() => handleUnlinkCoupon(item)}
             title="Desvincular Cupom"
           >
-            <FontAwesomeIcon icon={faUnlink} style={{ fontSize: "11px" }} />
+            <FontAwesomeIcon icon={faUnlink} className="text-[11px]" />
           </Button>
         </div>
       ),
@@ -420,12 +401,9 @@ export default function AfiliadoEditPage() {
       header: 'Nome',
       sortable: false,
       render: (item) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FontAwesomeIcon
-            icon={faUser}
-            style={{ color: 'var(--pink-dark)', fontSize: '13px' }}
-          />
-          <span style={{ fontWeight: 600 }}>{item.name}</span>
+        <div className="flex items-center gap-2">
+          <FontAwesomeIcon icon={faUser} className="text-[13px] text-brand" />
+          <span className="font-semibold">{item.name}</span>
         </div>
       ),
     },
@@ -434,25 +412,10 @@ export default function AfiliadoEditPage() {
       header: 'Role',
       sortable: false,
       render: (item) => (
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            fontSize: '12px',
-            fontWeight: 600,
-            padding: '3px 10px',
-            borderRadius: '20px',
-            background:
-              item.role === 'admin'
-                ? 'rgba(59, 130, 246, 0.12)'
-                : 'rgba(245, 184, 191, 0.25)',
-            color: item.role === 'admin' ? 'var(--info)' : 'var(--pink-dark)',
-          }}
-        >
-          <FontAwesomeIcon icon={faShieldHalved} style={{ fontSize: '10px' }} />
+        <Badge tone={item.role === "admin" ? "info" : "brand"}>
+          <FontAwesomeIcon icon={faShieldHalved} className="text-[10px]" />
           {returnRole(item.role)}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -462,19 +425,7 @@ export default function AfiliadoEditPage() {
       render: (item) =>
         item.temp_password ? (
           <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '13px',
-              fontFamily: 'monospace',
-              background: 'var(--hover)',
-              padding: '4px 8px',
-              borderRadius: '6px',
-              color: 'var(--text-main)',
-              cursor: 'pointer',
-              border: '1px solid var(--border)',
-            }}
+            className="copy-chip"
             title='Clique para copiar a senha temporária'
             onClick={async () => {
               try {
@@ -485,11 +436,11 @@ export default function AfiliadoEditPage() {
               }
             }}
           >
-            <FontAwesomeIcon icon={faCopy} style={{ fontSize: '11px', color: 'var(--pink-dark)' }} />
+            <FontAwesomeIcon icon={faCopy} />
             {item.temp_password}
           </span>
         ) : (
-          <span style={{ color: 'var(--text-muted)' }}>—</span>
+          <span className="text-muted">—</span>
         ),
     },
     {
@@ -506,7 +457,7 @@ export default function AfiliadoEditPage() {
             onClick={() => handleCopyClubLink(item)}
             title="Copiar link para o clube"
           >
-            <FontAwesomeIcon icon={faCopy} style={{ fontSize: "11px" }} />
+            <FontAwesomeIcon icon={faCopy} className="text-[11px]" />
           </Button>
         </div>
       ),
@@ -556,43 +507,15 @@ export default function AfiliadoEditPage() {
 
   return (
     <div className='flex flex-col gap-8'>
-      <div
-        className='flex items-center gap-4'
-        style={{ marginBottom: '8px' }}
-      >
-        <button
-          onClick={handleCancel}
-          style={{
-            background: "var(--hover)",
-            border: "1px solid var(--border)",
-            color: "var(--text-main)",
-            width: "36px",
-            height: "36px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "transform 0.15s, background-color 0.15s",
-            outline: "none"
-          }}
-          title="Voltar"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.05)";
-            e.currentTarget.style.background = "var(--border)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.background = "var(--hover)";
-          }}
-        >
-          <FontAwesomeIcon icon={faArrowLeft} style={{ fontSize: "14px" }} />
+      <div className='mb-2 flex items-center gap-4'>
+        <button type="button" onClick={handleCancel} className="back-btn" title="Voltar">
+          <FontAwesomeIcon icon={faArrowLeft} />
         </button>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>
+          <h1 className="page-title">
             {isNew ? 'Cadastrar Novo Afiliado' : 'Editar Afiliado'}
           </h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+          <p className="page-subtitle">
             {isNew ? 'Crie um afiliado na plataforma para vincular cupons e usuários.' : `Gerencie os dados e configurações do afiliado ${name}.`}
           </p>
         </div>
@@ -600,10 +523,8 @@ export default function AfiliadoEditPage() {
 
       <Card>
         {/* SESSÃO 1: DADOS GERAIS */}
-        <section style={{ marginBottom: '2rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem' }}>
-            Dados Gerais
-          </h3>
+        <section className="mb-8">
+          <h3 className="section-title mb-4">Dados Gerais</h3>
           <div className='form-grid'>
             <div className='form-col-4'>
               <Input
@@ -613,11 +534,7 @@ export default function AfiliadoEditPage() {
                 onChange={(e) => setName(e.target.value)}
                 disabled={loadingAffiliate}
               />
-              {loadingAffiliate && (
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Carregando dados...
-                </span>
-              )}
+              {loadingAffiliate && <span className="text-xs text-muted">Carregando dados...</span>}
             </div>
             <div className='form-col-4'>
               <Input
@@ -627,9 +544,7 @@ export default function AfiliadoEditPage() {
                 value={commissionRate}
                 onChange={(e) => setCommissionRate(e.target.value)}
                 disabled={loadingAffiliate}
-                suffix={
-                  <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span>
-                }
+                suffix={<span className="text-sm text-muted">%</span>}
               />
             </div>
             <div className='form-col-4'>
@@ -653,193 +568,60 @@ export default function AfiliadoEditPage() {
               />
             </div>
             <div className='form-col-4'>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-main)' }}>
-                Opção de Retirada (todo dia 10)
-              </label>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  background: 'var(--hover)',
-                  padding: '3px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border)',
-                  gap: '4px',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setPayoutMethod('pix')}
-                  disabled={loadingAffiliate}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px 12px',
-                    borderRadius: '7px',
-                    border: 'none',
-                    background: payoutMethod === 'pix' ? 'var(--pink-dark)' : 'transparent',
-                    color: payoutMethod === 'pix' ? '#fff' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <FontAwesomeIcon icon={faMoneyBillTransfer} />
-                  <span>PIX</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPayoutMethod('cupom')}
-                  disabled={loadingAffiliate}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px 12px',
-                    borderRadius: '7px',
-                    border: 'none',
-                    background: payoutMethod === 'cupom' ? 'var(--pink-dark)' : 'transparent',
-                    color: payoutMethod === 'cupom' ? '#fff' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <FontAwesomeIcon icon={faTag} />
-                  <span>CUPOM</span>
-                </button>
-              </div>
+              <SegmentedControl<PayoutMethod>
+                label="Opção de Retirada (todo dia 10)"
+                options={PAYOUT_OPTIONS}
+                value={payoutMethod}
+                onChange={setPayoutMethod}
+                disabled={loadingAffiliate}
+              />
             </div>
             <div className='form-col-4'>
               {payoutMethod === 'cupom' ? (
-                <div style={{ marginTop: '28px', fontSize: '12.5px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FontAwesomeIcon icon={faTag} style={{ color: 'var(--pink-dark)', fontSize: '11px' }} />
+                <p className="field-note mb-5 min-h-[50px]">
+                  <FontAwesomeIcon icon={faTag} />
                   <span>Retirada em cupom todo dia 10 (não requer chave Pix).</span>
-                </div>
+                </p>
               ) : (
-                (() => {
-                  const currentPixType = manualPixType || guessPixType(pixKey || "");
-                  const currentPixTypeConfig = PIX_TYPES.find(t => t.value === currentPixType) || PIX_TYPES[3];
-
-                  const pixSelector = (
-                    <div
-                      style={{
-                        position: "relative",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: "4px 8px 4px 10px",
-                        background: "var(--input-bg)",
-                        borderRadius: "16px",
-                        cursor: "pointer",
-                        color: "var(--text-main)",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        border: "1px solid var(--sidebar-border)",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
-                      }}
-                    >
-                      <FontAwesomeIcon icon={currentPixTypeConfig.icon} style={{ color: "var(--pink-dark)" }} />
-                      <span>{currentPixTypeConfig.label}</span>
-                      <FontAwesomeIcon icon={faChevronDown} style={{ fontSize: "10px", opacity: 0.5 }} />
-                      <select
-                        value={currentPixType}
-                        onChange={(e) => {
-                          const type = e.target.value as any;
-                          setManualPixType(type);
-                          const rawValue = type === "phone" || type === "cpf_cnpj" ? pixKey.replace(/\D/g, "") : pixKey;
-                          const masked = applyPixMask(rawValue, type);
-                          setPixKey(masked);
-                        }}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          opacity: 0,
-                          cursor: "pointer",
-                          width: "100%",
-                        }}
-                        title="Tipo de Chave Pix"
-                      >
-                        {PIX_TYPES.map(t => (
-                          <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-
-                  return (
-                    <Input
-                      label="Chave Pix"
-                      value={pixKey}
-                      onChange={(e) => {
-                        const type = manualPixType || guessPixType(e.target.value);
-                        setPixKey(applyPixMask(e.target.value, type));
-                      }}
-                      placeholder="CPF, e-mail, telefone..."
-                      disabled={loadingAffiliate}
-                      suffix={pixSelector}
-                    />
-                  );
-                })()
+                <PixKeyInput
+                  label="Chave Pix"
+                  value={pixKey}
+                  onChange={setPixKey}
+                  placeholder="CPF, e-mail, telefone..."
+                  disabled={loadingAffiliate}
+                />
               )}
             </div>
           </div>
         </section>
 
-        <hr style={{ borderTop: '1px solid var(--border)', margin: '2rem 0' }} />
+        <hr className="ui-divider my-8" />
 
-        <div className='flex flex-col lg:flex-row gap-8 items-start'>
-          <section style={{ flex: 1, width: '100%' }}>
-            <div
-              className='flex justify-between items-center'
-              style={{ marginBottom: '1rem' }}
-            >
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>Vínculo de Perfil/Usuário</h3>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {linkedProfile ? (
-                  <Button
-                    variant='danger'
-                    outline
-                    style={{ width: 'auto' }}
-                    onClick={handleUnlinkProfile}
-                  >
-                    Desvincular
-                  </Button>
-                ) : (
-                  <Button
-                    variant='primary'
-                    outline
-                    style={{ width: 'auto' }}
-                    onClick={handleOpenProfileModal}
-                    disabled={loadingAffiliate || saving}
-                  >
-                    Vincular Perfil
-                  </Button>
-                )}
-              </div>
+        <div className='flex flex-col items-start gap-8 lg:flex-row'>
+          <section className="w-full flex-1">
+            <div className='mb-4 flex items-center justify-between gap-3'>
+              <h3 className="section-title">Vínculo de Perfil/Usuário</h3>
+              {linkedProfile ? (
+                <Button variant='danger' outline size="sm" className="w-auto" onClick={handleUnlinkProfile}>
+                  Desvincular
+                </Button>
+              ) : (
+                <Button
+                  outline
+                  size="sm"
+                  className="w-auto"
+                  onClick={handleOpenProfileModal}
+                  disabled={loadingAffiliate || saving}
+                >
+                  Vincular Perfil
+                </Button>
+              )}
             </div>
 
             {linkedProfile ? (
-              <Table
-                data={[linkedProfile]}
-                columns={profileColumns}
-                loading={loadingProfiles}
-              />
+              <Table data={[linkedProfile]} columns={profileColumns} loading={loadingProfiles} compact hidePagination />
             ) : (
-              <div
-                style={{
-                  padding: '2rem',
-                  textAlign: 'center',
-                  color: 'var(--text-secondary, var(--text-muted))',
-                  border: '1px dashed var(--border)',
-                  borderRadius: '8px',
-                }}
-              >
+              <div className="empty-dashed">
                 {canManageAffiliateLinks
                   ? 'Nenhum perfil vinculado a este afiliado.'
                   : 'Salve o afiliado para habilitar vínculo de perfil.'}
@@ -848,46 +630,20 @@ export default function AfiliadoEditPage() {
           </section>
 
           {/* SESSÃO 3: CUPONS */}
-          <div style={{ flex: 1, width: '100%' }}>
-            <hr
-              className='lg:hidden'
-              style={{ borderTop: '1px solid var(--border)', margin: '2rem 0' }}
-            />
+          <div className="w-full flex-1">
+            <hr className="ui-divider my-8 lg:hidden" />
             <section>
-              <div
-                className='flex justify-between items-center'
-                style={{ marginBottom: '1rem' }}
-              >
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>
-                  Cupons de Desconto
-                </h3>
-                <Button
-                  variant='primary'
-                  outline
-                  style={{ width: 'auto' }}
-                  onClick={handleOpenCouponModal}
-                  disabled={saving}
-                >
+              <div className='mb-4 flex items-center justify-between gap-3'>
+                <h3 className="section-title">Cupons de Desconto</h3>
+                <Button outline size="sm" className="w-auto" onClick={handleOpenCouponModal} disabled={saving}>
                   Vincular Cupom
                 </Button>
               </div>
 
               {canManageAffiliateLinks && coupons.length > 0 ? (
-                <Table
-                  data={coupons}
-                  columns={couponColumns}
-                  loading={loadingCoupons || loadingUnlink}
-                />
+                <Table data={coupons} columns={couponColumns} loading={loadingCoupons || loadingUnlink} compact hidePagination={coupons.length <= 10} />
               ) : (
-                <div
-                  style={{
-                    padding: '2rem',
-                    textAlign: 'center',
-                    color: 'var(--text-secondary)',
-                    border: '1px dashed var(--border)',
-                    borderRadius: '8px',
-                  }}
-                >
+                <div className="empty-dashed">
                   {canManageAffiliateLinks
                     ? 'Nenhum cupom vinculado a este afiliado.'
                     : 'Cadastre o afiliado para habilitar o vínculo de cupons.'}
@@ -897,28 +653,18 @@ export default function AfiliadoEditPage() {
           </div>
         </div>
 
-        <hr style={{ borderTop: '1px solid var(--border)', margin: '2rem 0' }} />
+        <hr className="ui-divider my-8" />
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-          <Button
-            variant='primary'
-            onClick={() => handleSave(true)}
-            disabled={saving}
-            style={{ width: 'auto' }}
-          >
-            <FontAwesomeIcon icon={faSave} style={{ marginRight: '8px' }} />
+        <div className="mt-3 flex flex-wrap gap-3">
+          <Button onClick={() => handleSave(true)} disabled={saving} className="w-auto gap-2 px-6">
+            <FontAwesomeIcon icon={faSave} />
             {saving
               ? 'Salvando...'
               : currentAffiliateId
                 ? 'Salvar Alterações'
                 : 'Cadastrar Afiliado'}
           </Button>
-          <Button
-            variant='info'
-            outline
-            style={{ width: 'auto' }}
-            onClick={handleCancel}
-          >
+          <Button variant='info' outline className="w-auto px-6" onClick={handleCancel}>
             <FontAwesomeIcon icon={faArrowLeft} />
             Voltar
           </Button>

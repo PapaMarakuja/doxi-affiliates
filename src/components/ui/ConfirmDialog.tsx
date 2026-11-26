@@ -57,7 +57,7 @@ export function ConfirmDialog() {
         <Button
           variant="primary"
           outline
-          style={{ width: "auto", flex: 1 }}
+          className="flex-1"
           onClick={handleCancel}
           type="button"
         >
@@ -65,7 +65,7 @@ export function ConfirmDialog() {
         </Button>
         <Button
           variant={confirmVariant}
-          style={{ width: "auto", flex: 1 }}
+          className="flex-1"
           onClick={handleConfirm}
           type="button"
         >

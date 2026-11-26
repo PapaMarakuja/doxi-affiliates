@@ -1,120 +1,35 @@
-import type { Metadata } from 'next';
-import Image from 'next/image';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { getAuthenticatedUser } from '@/src/lib/auth/session';
-import { LoginForm } from '@/src/components/auth/LoginForm';
-import { Card } from '@/src/components/ui/Card';
-import ThemeToggle from '@/src/components/ThemeToggle';
-import loginBackground from '@/src/assets/images/login-background.png';
-import doxiClubLightLogo from '@/src/assets/images/doxi-club-light.png';
-import doxiClubDarkLogo from '@/src/assets/images/doxi-club-dark.png';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getAuthenticatedUser } from "@/src/lib/auth/session";
+import { LoginForm } from "@/src/components/auth/LoginForm";
+import { AuthShell } from "@/src/components/auth/AuthShell";
 
 export const metadata: Metadata = {
-  title: 'Entrar | Doxi Afiliados',
-  description: 'Acesse seu painel de afiliado Doxi Wear.',
+  title: "Entrar | Doxi Afiliados",
+  description: "Acesse seu painel de afiliado Doxi Wear.",
 };
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
   const result = await getAuthenticatedUser();
 
   if (result.data) {
-    redirect('/');
+    redirect("/");
   }
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '16px',
-        padding: '20px 12px',
-        minHeight: '100vh',
-        backgroundImage: `url(${loginBackground.src})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
+    <AuthShell
+      variant="narrow"
+      footer={
+        <>
+          Quer fazer parte?{" "}
+          <Link href="/cadastro" className="cad-footer-link">Cadastre-se</Link>
+        </>
+      }
     >
-      <ThemeToggle variant="floating" />
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-          gap: '10px',
-          marginBottom: '8px',
-          width: '100%',
-          maxWidth: '520px',
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            maxWidth: '360px',
-            flex: '1 1 210px',
-          }}
-        >
-          <Image
-            src={doxiClubLightLogo}
-            alt='Doxi Club'
-            priority
-            className='login-logo-light'
-            style={{
-              width: '100%',
-              height: 'auto',
-              display: 'block',
-            }}
-          />
-          <Image
-            src={doxiClubDarkLogo}
-            alt='Doxi Club'
-            priority
-            className='login-logo-dark'
-            style={{
-              width: '100%',
-              height: 'auto',
-            }}
-          />
-        </div>
-      </header>
-
-      <div style={{ width: '100%', maxWidth: '420px' }}>
-        <Card>
-          <LoginForm />
-        </Card>
-      </div>
-
-      <footer
-        style={{
-          marginTop: '4px',
-          width: '100%',
-          maxWidth: '420px',
-          textAlign: 'center',
-          fontSize: '14px',
-          color: 'var(--text-muted)',
-        }}
-      >
-        <Card style={{ padding: '12px 16px' }}>
-          Quer fazer parte?{' '}
-          <Link
-            href='/cadastro'
-            style={{
-              color: 'var(--pink-dark)',
-              textDecoration: 'none',
-              fontWeight: 600,
-            }}
-          >
-            Cadastre-se
-          </Link>
-        </Card>
-      </footer>
-    </div>
+      <LoginForm />
+    </AuthShell>
   );
 }

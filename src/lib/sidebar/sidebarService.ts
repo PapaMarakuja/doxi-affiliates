@@ -2,7 +2,7 @@ import { createSupabaseBrowserClient } from "@/src/lib/supabase/client";
 import type { SidebarItem, SidebarRole } from "@/src/types/sidebarItem";
 
 const CACHE_KEY = "doxi_sidebar_items";
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2; // bump when sidebar_items change so cached menus refresh
 
 interface SidebarCache {
   version: number;

@@ -17,7 +17,8 @@ import {
   faMoneyBillTransfer,
   faExclamationCircle,
 } from "@fortawesome/free-solid-svg-icons";
-import { formatCurrency } from "@/src/lib/utils";
+import { cn, copyToClipboard, formatCurrency } from "@/src/lib/utils";
+import { Badge } from "@/src/components/ui/Badge";
 
 interface AffiliateOwed {
   affiliateId: string;
@@ -108,125 +109,70 @@ export function BatchPayoutModal({ isOpen, onClose, onSuccess }: BatchPayoutModa
     }
   };
 
-  const copyPix = (key: string, name: string) => {
-    navigator.clipboard.writeText(key);
-    addToast({ message: `PIX de ${name} copiado!`, type: "success" });
-  };
+  const copyPix = (key: string, name: string) =>
+    copyToClipboard(key, () => addToast({ message: `PIX de ${name} copiado!`, type: "success" }));
 
   const withOwed = affiliates.filter((a) => a.owed > 0);
   const withoutOwed = affiliates.filter((a) => a.owed <= 0);
   const totalToPay = withOwed.reduce((s, a) => s + a.owed, 0);
 
-  const AffiliateRow = ({ a }: { a: AffiliateOwed }) => {
+  // Render function (not a nested component) so rows are not remounted on every render.
+  const renderAffiliateRow = (a: AffiliateOwed) => {
     const isPaid = paidIds.has(a.affiliateId);
     const isProcessing = processingId === a.affiliateId;
+    const hasPixKey = !!a.pixKey && a.pixKey !== "Não cadastrada";
 
     return (
-      <div style={{
-        padding: "14px 16px",
-        background: "var(--card-bg)",
-        borderRadius: "12px",
-        border: isPaid ? "1px solid var(--success)" : "1px solid var(--border)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "10px",
-        transition: "border-color 0.2s",
-      }}>
-        {/* Top row: name + badges + amount + action */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          {/* Avatar */}
-          <div style={{
-            width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
-            background: isPaid ? "rgba(34,197,94,0.15)" : "var(--hover)",
-            border: `1px solid ${isPaid ? "var(--success)" : "var(--border)"}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "14px", fontWeight: 700, color: isPaid ? "var(--success)" : "var(--pink-dark)",
-          }}>
-            {isPaid
-              ? <FontAwesomeIcon icon={faCheckCircle} />
-              : a.name.charAt(0).toUpperCase()}
+      <div key={a.affiliateId} className={cn("soft-panel flex flex-col gap-2.5 bg-card", isPaid && "border-success")}>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold",
+            isPaid ? "border-success bg-success/15 text-success" : "border-line bg-soft text-brand")}>
+            {isPaid ? <FontAwesomeIcon icon={faCheckCircle} /> : a.name.charAt(0).toUpperCase()}
           </div>
 
-          {/* Name + order count */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: "14px", color: "var(--text-main)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {a.name}
-            </p>
-            <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)" }}>
-              <FontAwesomeIcon icon={faShoppingBag} style={{ marginRight: "4px" }} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-bold text-main">{a.name}</p>
+            <p className="flex items-center gap-1 text-[11px] text-muted">
+              <FontAwesomeIcon icon={faShoppingBag} />
               {a.orderCount} pedidos · ganhou {formatCurrency(a.totalEarned)} · já pago {formatCurrency(a.alreadyPaid)}
             </p>
           </div>
 
-          {/* Amount */}
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)" }}>A pagar</p>
-            <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: isPaid ? "var(--success)" : "var(--pink-dark)" }}>
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] text-muted">A pagar</p>
+            <p className={cn("text-lg font-extrabold", isPaid ? "text-success" : "text-brand")}>
               {formatCurrency(a.owed > 0 ? a.owed : 0)}
             </p>
           </div>
 
-          {/* Action button */}
           {a.owed > 0 && !isPaid && (
-            <Button
-              variant="success"
-              loading={isProcessing}
-              onClick={() => handlePay(a)}
-              style={{ width: "auto", padding: "8px 16px", fontSize: "13px", minHeight: "unset", flexShrink: 0 }}
-            >
-              {!isProcessing && <FontAwesomeIcon icon={faMoneyBillTransfer} style={{ marginRight: "6px" }} />}
+            <Button variant="success" size="sm" className="w-auto shrink-0" loading={isProcessing} onClick={() => handlePay(a)}>
+              {!isProcessing && <FontAwesomeIcon icon={faMoneyBillTransfer} />}
               Lançar
             </Button>
           )}
 
           {isPaid && (
-            <span style={{
-              display: "inline-flex", alignItems: "center", gap: "5px",
-              padding: "4px 10px", borderRadius: "20px",
-              background: "rgba(34,197,94,0.12)", border: "1px solid var(--success)",
-              fontSize: "12px", fontWeight: 700, color: "var(--success)", flexShrink: 0,
-            }}>
+            <Badge tone="success" className="shrink-0">
               <FontAwesomeIcon icon={faCheckCircle} /> Lançado
-            </span>
+            </Badge>
           )}
         </div>
 
-        {/* PIX key row */}
-        {a.pixKey && a.pixKey !== "Não cadastrada" && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: "10px",
-            padding: "8px 12px", borderRadius: "8px",
-            background: "rgba(59,130,246,0.06)", border: "1px solid var(--info)",
-          }}>
-            <FontAwesomeIcon icon={faWallet} style={{ color: "var(--info)", fontSize: "12px", flexShrink: 0 }} />
-            <span style={{ flex: 1, fontSize: "12px", color: "var(--info)", fontWeight: 600, wordBreak: "break-all" }}>
-              {a.pixKey}
-            </span>
-            <button
-              onClick={() => copyPix(a.pixKey!, a.name)}
-              style={{
-                background: "var(--info)", border: "none", borderRadius: "6px",
-                color: "#fff", cursor: "pointer", padding: "4px 8px",
-                fontSize: "11px", fontWeight: 600, flexShrink: 0,
-                display: "flex", alignItems: "center", gap: "4px",
-              }}
-            >
+        {hasPixKey ? (
+          <div className="callout callout--info items-center px-3 py-2 text-xs">
+            <FontAwesomeIcon icon={faWallet} className="text-xs" />
+            <span className="flex-1 break-all font-semibold text-info">{a.pixKey}</span>
+            <Button variant="info" size="sm" className="min-h-0 w-auto px-2 py-1 text-[11px]" onClick={() => copyPix(a.pixKey!, a.name)}>
               <FontAwesomeIcon icon={faCopy} /> Copiar
-            </button>
+            </Button>
           </div>
-        )}
-
-        {!a.pixKey || a.pixKey === "Não cadastrada" ? (
-          <div style={{
-            display: "flex", alignItems: "center", gap: "6px",
-            padding: "6px 10px", borderRadius: "6px",
-            background: "rgba(245,158,11,0.08)", border: "1px solid var(--warning)",
-            fontSize: "11px", color: "var(--warning)", fontWeight: 600,
-          }}>
-            <FontAwesomeIcon icon={faExclamationCircle} />
+        ) : (
+          <div className="callout callout--warning items-center px-2.5 py-1.5 text-[11px] font-semibold text-warning">
+            <FontAwesomeIcon icon={faExclamationCircle} className="text-xs" />
             Chave PIX não cadastrada
           </div>
-        ) : null}
+        )}
       </div>
     );
   };
@@ -239,96 +185,63 @@ export function BatchPayoutModal({ isOpen, onClose, onSuccess }: BatchPayoutModa
       size="lg"
       id="batch-payout-modal"
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-
-        {/* Summary header */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "12px",
-        }}>
-          <div style={{ padding: "14px 16px", background: "var(--card-bg)", borderRadius: "10px", border: "1px solid var(--border)" }}>
-            <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>Afiliados com saldo</p>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--text-main)" }}>
-              {loading ? <Skeleton width="32px" height="28px" /> : withOwed.length}
-            </div>
+      <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="stat-tile">
+            <p className="stat-tile-label">Afiliados com saldo</p>
+            <div className="stat-tile-value">{loading ? <Skeleton width="32px" height="28px" /> : withOwed.length}</div>
           </div>
-          <div style={{ padding: "14px 16px", background: "var(--card-bg)", borderRadius: "10px", border: "1px solid var(--border)" }}>
-            <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>Já lançados agora</p>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--success)" }}>
-              {loading ? <Skeleton width="32px" height="28px" /> : paidIds.size}
-            </div>
+          <div className="stat-tile">
+            <p className="stat-tile-label">Já lançados agora</p>
+            <div className="stat-tile-value text-success">{loading ? <Skeleton width="32px" height="28px" /> : paidIds.size}</div>
           </div>
-          <div style={{ padding: "14px 16px", background: "rgba(34,197,94,0.10)", borderRadius: "10px", border: "1px solid var(--success)" }}>
-            <p style={{ margin: 0, fontSize: "11px", color: "var(--success)", marginBottom: "4px" }}>Total a pagar</p>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--success)" }}>
-              {loading ? <Skeleton width="80px" height="28px" /> : formatCurrency(totalToPay)}
-            </div>
+          <div className="stat-tile stat-tile--success">
+            <p className="stat-tile-label">Total a pagar</p>
+            <div className="stat-tile-value">{loading ? <Skeleton width="80px" height="28px" /> : formatCurrency(totalToPay)}</div>
           </div>
         </div>
 
-        {/* List */}
         {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div className="flex flex-col gap-2.5">
             <Skeleton height="80px" />
             <Skeleton height="80px" />
             <Skeleton height="80px" />
           </div>
-        ) : withOwed.length === 0 && withoutOwed.length === 0 ? (
-          <div style={{
-            padding: "40px", textAlign: "center",
-            color: "var(--text-muted)", background: "var(--card-bg)",
-            borderRadius: "12px", border: "1px dashed var(--border)",
-          }}>
-            <FontAwesomeIcon icon={faMoneyBillWave} style={{ fontSize: "32px", opacity: 0.3, marginBottom: "12px" }} />
-            <p style={{ margin: 0 }}>Nenhum afiliado ativo encontrado.</p>
+        ) : affiliates.length === 0 ? (
+          <div className="empty-dashed empty-state">
+            <FontAwesomeIcon icon={faMoneyBillWave} />
+            <p>Nenhum afiliado ativo encontrado.</p>
           </div>
         ) : (
-          <div style={{ overflowY: "auto", maxHeight: "520px", paddingRight: "2px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div className="flex max-h-[520px] flex-col gap-2 overflow-y-auto pr-0.5">
+            {withOwed.length > 0 && (
+              <>
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted">
+                  Com saldo a receber — {withOwed.length}
+                </p>
+                {withOwed.map(renderAffiliateRow)}
+              </>
+            )}
 
-              {/* Affiliates with owed > 0 */}
-              {withOwed.length > 0 && (
-                <>
-                  <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
-                    Com saldo a receber — {withOwed.length}
-                  </p>
-                  {withOwed.map((a) => (
-                    <AffiliateRow key={a.affiliateId} a={a} />
-                  ))}
-                </>
-              )}
+            {withoutOwed.length > 0 && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowZeroAccordion((v) => !v)}
+                  className="expand-row-header rounded-[10px] border border-line bg-soft px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted"
+                  aria-expanded={showZeroAccordion}
+                >
+                  <FontAwesomeIcon icon={showZeroAccordion ? faChevronDown : faChevronRight} />
+                  Sem saldo a receber — {withoutOwed.length}
+                </button>
 
-              {/* Accordion for zeroes */}
-              {withoutOwed.length > 0 && (
-                <div style={{ marginTop: "8px" }}>
-                  <button
-                    onClick={() => setShowZeroAccordion((v) => !v)}
-                    style={{
-                      width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "10px 14px", borderRadius: "10px",
-                      background: "var(--hover)", border: "1px solid var(--border)",
-                      cursor: "pointer", color: "var(--text-muted)",
-                      fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px",
-                    }}
-                  >
-                    <span>
-                      <FontAwesomeIcon icon={showZeroAccordion ? faChevronDown : faChevronRight} style={{ marginRight: "8px" }} />
-                      Sem saldo a receber — {withoutOwed.length}
-                    </span>
-                  </button>
-
-                  {showZeroAccordion && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
-                      {withoutOwed.map((a) => (
-                        <AffiliateRow key={a.affiliateId} a={a} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-            </div>
+                {showZeroAccordion && (
+                  <div className="mt-2 flex flex-col gap-2">
+                    {withoutOwed.map(renderAffiliateRow)}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

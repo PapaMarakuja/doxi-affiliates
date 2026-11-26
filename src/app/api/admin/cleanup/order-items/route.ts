@@ -7,7 +7,7 @@ import type { Profile } from "@/src/types";
  *
  * Remove duplicatas da tabela order_items.
  *
- * Para cada (order_id, product_name, quantity, unit_price), mantém apenas
+ * Para cada (order_id, produto, variante, quantity, unit_price), mantém apenas
  * o registro com o menor id (o mais antigo) e deleta os demais.
  *
  * ⚠️ Apenas admin pode executar.
@@ -39,20 +39,20 @@ export async function POST() {
     // 1. Buscar todos os order_items
     const { data: allItems, error: fetchError } = await supabase
       .from("order_items")
-      .select("id, order_id, product_name, quantity, unit_price")
+      .select("id, order_id, product_id, product_name, variant_label, quantity, unit_price")
       .order("id", { ascending: true });
 
     if (fetchError || !allItems) {
       return Response.json({ error: fetchError?.message ?? "Failed to fetch items" }, { status: 500 });
     }
 
-    // 2. Detectar duplicatas: para cada (order_id + product_name + quantity + unit_price),
+    // 2. Detectar duplicatas: para cada (order_id + produto + variante + quantity + unit_price),
     //    manter o primeiro id (menor) e coletar os demais para deleção.
     const seen = new Map<string, string>(); // chave → id a manter
     const toDelete: string[] = [];
 
     for (const item of allItems) {
-      const key = `${item.order_id}__${item.product_name}__${item.quantity}__${item.unit_price}`;
+      const key = `${item.order_id}__${item.product_id ?? item.product_name}__${item.variant_label}__${item.quantity}__${item.unit_price}`;
 
       if (seen.has(key)) {
         // Duplicata — marcar para deletar

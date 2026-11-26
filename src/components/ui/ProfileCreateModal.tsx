@@ -7,7 +7,7 @@ import { Button } from "@/src/components/ui/Button";
 import { useToast } from "@/src/contexts/ToastContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRotate, faCopy, faKey, faUser, faAt } from "@fortawesome/free-solid-svg-icons";
-import type { Profile, ProfileWithEmail } from "@/src/types";
+import type { ProfileWithEmail } from "@/src/types";
 import { resolveAuthEmail } from "@/src/lib/auth/usernameResolver";
 
 function generateRandomPassword(length = 20): string {
@@ -126,27 +126,11 @@ export function ProfileCreateModal({
 
       addToast({
         message: (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div className="flex flex-col gap-2">
             <span>Perfil criado com sucesso!</span>
             <Button
               variant="transparent"
-              style={{
-                padding: "6px 12px",
-                fontSize: "11px",
-                fontWeight: "700",
-                minHeight: "unset",
-                width: "fit-content",
-                marginTop: "6px",
-                border: "1px solid currentColor",
-                borderRadius: "6px",
-                color: "inherit",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                opacity: 0.9
-              }}
+              className="toast-action-btn"
               onClick={handleCopyAll}
             >
               <FontAwesomeIcon icon={faCopy} />
@@ -177,18 +161,6 @@ export function ProfileCreateModal({
     }
   };
 
-  const sectionTitleStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontSize: "0.95rem",
-    fontWeight: 600,
-    color: "var(--pink-dark)",
-    marginBottom: "12px",
-    paddingBottom: "8px",
-    borderBottom: "1px solid var(--border)",
-  };
-
   return (
     <Modal
       isOpen={isOpen}
@@ -199,9 +171,9 @@ export function ProfileCreateModal({
       zIndex={150}
       closeOnOverlayClick={false}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      <div className="flex flex-col gap-6">
         <section>
-          <div style={sectionTitleStyle}>
+          <div className="form-section-title">
             <FontAwesomeIcon icon={faUser} />
             Dados do Perfil
           </div>
@@ -214,7 +186,7 @@ export function ProfileCreateModal({
                 placeholder="Ex: Olívia Maria"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                icon={<FontAwesomeIcon icon={faUser} style={{ fontSize: "13px" }} />}
+                icon={<FontAwesomeIcon icon={faUser} className="text-[13px]" />}
                 disabled={saving}
               />
             </div>
@@ -222,7 +194,7 @@ export function ProfileCreateModal({
         </section>
 
         <section>
-          <div style={sectionTitleStyle}>
+          <div className="form-section-title">
             <FontAwesomeIcon icon={faKey} />
             Dados de Acesso
           </div>
@@ -236,36 +208,27 @@ export function ProfileCreateModal({
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={saving}
-                icon={<FontAwesomeIcon icon={faAt} style={{ fontSize: "13px" }} />}
+                icon={<FontAwesomeIcon icon={faAt} className="text-[13px]" />}
               />
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", paddingLeft: "2px" }}>
+              <div className="mt-1 pl-0.5 text-[11px] text-muted">
                 O usuário é salvo sempre em letras minúsculas.
               </div>
             </div>
 
-            <div className="form-col-12" style={{ marginTop: "12px" }}>
+            <div className="form-col-12 mt-3">
               <Input
                 id="profile_form_password"
                 label="Senha Temporária"
                 value={password}
                 disabled
-                icon={<FontAwesomeIcon icon={faKey} style={{ fontSize: "13px" }} />}
+                icon={<FontAwesomeIcon icon={faKey} className="text-[13px]" />}
                 rightLabel={
-                  <div style={{ display: "flex", gap: "6px" }}>
+                  <div className="flex gap-1.5">
                     <button
                       type="button"
                       onClick={handleRegeneratePassword}
                       title="Gerar nova senha"
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "var(--pink-dark)",
-                        padding: "2px 4px",
-                        fontSize: "13px",
-                        borderRadius: "4px",
-                        transition: "background 0.15s",
-                      }}
+                      className="icon-action"
                     >
                       <FontAwesomeIcon icon={faRotate} />
                     </button>
@@ -273,16 +236,7 @@ export function ProfileCreateModal({
                       type="button"
                       onClick={handleCopyPassword}
                       title="Copiar senha"
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "var(--pink-dark)",
-                        padding: "2px 4px",
-                        fontSize: "13px",
-                        borderRadius: "4px",
-                        transition: "background 0.15s",
-                      }}
+                      className="icon-action"
                     >
                       <FontAwesomeIcon icon={faCopy} />
                     </button>
@@ -292,17 +246,17 @@ export function ProfileCreateModal({
             </div>
           </div>
 
-          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "8px" }}>
+          <div className="mt-2 text-xs text-muted">
             Uma senha aleatória foi gerada automaticamente. Copie e envie ao afiliado e ele poderá alterá-la depois.
           </div>
         </section>
       </div>
 
-      <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
+      <div className="mt-5 flex gap-3">
         <Button
           variant="primary"
           outline
-          style={{ width: "auto", flex: 1 }}
+          className="flex-1"
           onClick={handleClose}
           disabled={saving}
           type="button"
@@ -311,7 +265,7 @@ export function ProfileCreateModal({
         </Button>
         <Button
           variant="primary"
-          style={{ width: "auto", flex: 1 }}
+          className="flex-1"
           onClick={handleSave}
           loading={saving}
           type="button"

@@ -1,6 +1,7 @@
 import { getAuthenticatedAdmin } from "@/src/lib/auth/session";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
-import { getAffiliateDataStartDate, calculateOrderCommission } from "@/src/lib/utils";
+import { getAffiliateDataStartDate, calculateOrderCommission, getOrderItemName } from "@/src/lib/utils";
+import type { OrderWithItems } from "@/src/types/orders";
 
 import { NextRequest } from "next/server";
 
@@ -46,7 +47,7 @@ export async function GET(
       .from("orders")
       .select(`
         id,
-        shopify_order_id,
+        external_order_id,
         created_at,
         financial_status,
         total_amount,
@@ -55,6 +56,8 @@ export async function GET(
         coupon_code,
         order_items (
           product_name,
+          variant_label,
+          products ( name ),
           quantity,
           unit_price
         )
@@ -71,22 +74,23 @@ export async function GET(
 
     if (error) throw error;
 
-    const result = (orders || []).map((o: any) => {
-      // Uses the centralized util function — BCC = total_amount - shipping_cost - total_discounts
+    // Without generated DB types, supabase-js types the many-to-one `products` embed as an array (it is an object at runtime).
+    const result = ((orders || []) as unknown as OrderWithItems[]).map((o) => {
+      // Uses the centralized util function — BCC = total_amount - shipping_cost
       const commission = calculateOrderCommission(o, rate);
-      const bcc = o.total_amount - (o.shipping_cost || 0) - (o.total_discounts || 0);
+      const bcc = o.total_amount - (o.shipping_cost || 0);
 
       const items = o.order_items || [];
 
       // Sum of all item prices that have unit_price — used as distribution base
       // so that item commissions always sum to the order commission
-      const itemsPriceSum = items.reduce((acc: number, item: any) =>
+      const itemsPriceSum = items.reduce((acc, item) =>
         item.unit_price != null ? acc + item.unit_price * item.quantity : acc, 0
       );
 
       return {
         id: o.id,
-        shopify_order_id: o.shopify_order_id,
+        external_order_id: o.external_order_id,
         created_at: o.created_at,
         financial_status: o.financial_status,
         total_amount: o.total_amount,
@@ -95,7 +99,7 @@ export async function GET(
         coupon_code: o.coupon_code,
         bcc,
         commission: parseFloat(commission.toFixed(2)),
-        items: items.map((item: any) => {
+        items: items.map((item) => {
           // Distribute the order commission proportionally by item price share
           // item_commission = (item_total / items_price_sum) * order_commission
           let itemCommission: number | null = null;
@@ -104,7 +108,7 @@ export async function GET(
             itemCommission = parseFloat(((itemTotal / itemsPriceSum) * commission).toFixed(2));
           }
           return {
-            product_name: item.product_name,
+            product_name: getOrderItemName(item),
             quantity: item.quantity,
             unit_price: item.unit_price ?? null,
             item_commission: itemCommission,
@@ -120,8 +124,8 @@ export async function GET(
         period_start: periodStart,
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("GET /api/admin/affiliates/[id]/orders error:", err);
-    return Response.json({ error: err.message || "Erro interno do servidor" }, { status: 500 });
+    return Response.json({ error: err instanceof Error ? err.message : "Erro interno do servidor" }, { status: 500 });
   }
 }

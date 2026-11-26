@@ -7,6 +7,8 @@ export interface ShopifyDiscountCode {
 export interface ShopifyLineItem {
   id: number;
   title: string;
+  product_id: number | null;
+  variant_title: string | null;
   quantity: number;
   price: string; // Shopify retorna como string
 }

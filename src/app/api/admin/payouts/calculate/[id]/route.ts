@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/src/lib/utils";
 import { getAuthenticatedAdmin } from "@/src/lib/auth/session";
 import { PayoutService } from "@/src/services/payout.service";
 import { NextRequest } from "next/server";
@@ -18,8 +19,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const service = new PayoutService();
     const data = await service.calculateAffiliateOwed(affiliateId);
     return Response.json({ data });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/admin/payouts/calculate/[id] error:", error);
-    return Response.json({ error: error.message || "Erro interno do servidor" }, { status: 500 });
+    return Response.json({ error: getErrorMessage(error, "Erro interno do servidor") }, { status: 500 });
   }
 }

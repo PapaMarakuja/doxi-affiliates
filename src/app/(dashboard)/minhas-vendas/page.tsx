@@ -4,11 +4,13 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Card } from "@/src/components/ui/Card";
 import { Table, Column } from "@/src/components/ui/Table";
 import { Select, SelectOption } from "@/src/components/ui/Select";
-import { Skeleton } from "@/src/components/ui/Skeleton";
+import { Input } from "@/src/components/ui/Input";
 import { Modal } from "@/src/components/ui/Modal";
-import { Badge } from "@/src/components/ui/Badge";
+import { Badge, BadgeTone } from "@/src/components/ui/Badge";
+import { MetricCard } from "@/src/components/ui/MetricCard";
+import { formatCurrency } from "@/src/lib/utils";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearch, faBoxOpen, faCalendarAlt, faClockRotateLeft, faMoneyBillWave, faChartLine } from "@fortawesome/free-solid-svg-icons";
+import { faBoxOpen, faCalendarAlt, faClockRotateLeft, faMoneyBillWave, faChartLine } from "@fortawesome/free-solid-svg-icons";
 
 interface SaleItem {
   product_name: string;
@@ -30,41 +32,18 @@ interface SalesStats {
   totalConversions: number;
 }
 
-const getCommissionStatusBadge = (isLiberated: boolean, status: string) => {
-  if (status === "refunded") {
-    return {
-      text: "Reembolsado",
-      bg: "rgba(59, 130, 246, 0.12)",
-      color: "var(--info, #3b82f6)",
-    };
-  }
-  if (status === "voided") {
-    return {
-      text: "Cancelado",
-      bg: "rgba(239, 68, 68, 0.12)",
-      color: "var(--error, #ef4444)",
-    };
-  }
-  if (status !== "paid") {
-    return {
-      text: "Aguardando Pagamento",
-      bg: "rgba(107, 124, 141, 0.12)",
-      color: "var(--text-muted, #6B7C8D)",
-    };
-  }
-  if (!isLiberated) {
-    return {
-      text: "A Liberar",
-      bg: "rgba(245, 158, 11, 0.12)",
-      color: "var(--warning, #f59e0b)",
-    };
-  }
-  return {
-    text: "Liberado",
-    bg: "rgba(34, 197, 94, 0.12)",
-    color: "var(--success, #22c55e)",
-  };
+const getCommissionStatusBadge = (isLiberated: boolean, status: string): { text: string; tone: BadgeTone } => {
+  if (status === "refunded") return { text: "Reembolsado", tone: "info" };
+  if (status === "voided") return { text: "Cancelado", tone: "danger" };
+  if (status !== "paid") return { text: "Aguardando Pagamento", tone: "neutral" };
+  if (!isLiberated) return { text: "A Liberar", tone: "warning" };
+  return { text: "Liberado", tone: "success" };
 };
+
+function CommissionStatusBadge({ sale }: { sale: Sale }) {
+  const badge = getCommissionStatusBadge(sale.isLiberated, sale.status);
+  return <Badge tone={badge.tone} dot>{badge.text}</Badge>;
+}
 
 export default function MinhasVendasPage() {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -91,7 +70,6 @@ export default function MinhasVendasPage() {
       const res = await fetch("/api/sales");
       if (res.ok) {
         const { data } = await res.json();
-        console.log("🚀 ~ MinhasVendasPage ~ data:", data)
         setSales(data.sales || []);
         setStats(data.stats || {
           totalCommissions: 0,
@@ -155,11 +133,7 @@ export default function MinhasVendasPage() {
       render: (item) => {
         const orderId = item.id ? String(item.id) : "";
         const displayId = orderId ? (orderId.length > 8 ? orderId.substring(0, 6) : orderId) : "------";
-        return (
-          <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
-            #DX-{displayId}
-          </span>
-        );
+        return <span className="font-semibold text-main">#DX-{displayId}</span>;
       }
     },
     {
@@ -168,21 +142,15 @@ export default function MinhasVendasPage() {
       sortable: false,
       render: (item) => {
         const totalItems = item.items.reduce((acc, i) => acc + i.quantity, 0);
-        if (totalItems === 0) return <span style={{ color: "var(--text-muted)" }}>Nenhum item</span>;
+        if (totalItems === 0) return <span className="text-muted">Nenhum item</span>;
 
         const firstProduct = item.items[0].product_name;
         if (totalItems === 1) return firstProduct;
 
         return (
-          <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span className="flex items-center gap-1.5">
             {firstProduct}
-            <span style={{
-              fontSize: "11px",
-              padding: "2px 6px",
-              background: "var(--hover)",
-              borderRadius: "4px",
-              color: "var(--text-muted)"
-            }}>
+            <span className="rounded bg-soft px-1.5 py-0.5 text-[11px] text-muted">
               +{totalItems - 1} item(s)
             </span>
           </span>
@@ -193,30 +161,17 @@ export default function MinhasVendasPage() {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (item) => {
-        const badge = getCommissionStatusBadge(item.isLiberated, item.status);
-        return (
-          <Badge bg={badge.bg} color={badge.color} dotColor={badge.color}>
-            {badge.text}
-          </Badge>
-        );
-      }
+      render: (item) => <CommissionStatusBadge sale={item} />
     },
     {
       key: "commission",
       header: "Seu Ganho",
       sortable: true,
       render: (item) => (
-        <span style={{
-          fontWeight: "bold",
-          color: item.isLiberated ? "var(--success-text, #2e7d32)" : "var(--warning-text, #ed6c02)",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px"
-        }}>
-          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.commission)}
+        <span className={`flex items-center gap-1.5 font-bold ${item.isLiberated ? "text-success" : "text-warning"}`}>
+          {formatCurrency(item.commission)}
           {!item.isLiberated && (
-            <span title="Saldo a liberar (em garantia)" style={{ fontSize: "12px", color: "var(--warning-text, #ed6c02)" }}>
+            <span title="Saldo a liberar (em garantia)" className="text-xs">
               <FontAwesomeIcon icon={faClockRotateLeft} />
             </span>
           )}
@@ -232,80 +187,15 @@ export default function MinhasVendasPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* HEADER DE RESUMO */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-        gap: "24px"
-      }}>
-        {/* Card: Ganhos Acumulados */}
-        <Card style={{ padding: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{
-            width: "48px", height: "48px", borderRadius: "12px",
-            background: "rgba(33, 150, 243, 0.1)", color: "#2196f3",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px"
-          }}>
-            <FontAwesomeIcon icon={faMoneyBillWave} />
-          </div>
-          <div>
-            <div style={{ color: "var(--text-muted)", fontSize: "14px", fontWeight: 500 }}>Ganhos Acumulados</div>
-            <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-main)", marginTop: "4px" }}>
-              {loading ? (
-                <Skeleton width="120px" height="34px" />
-              ) : (
-                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.totalCommissions)
-              )}
-            </div>
-          </div>
-        </Card>
-
-        {/* Card: Saldo a Liberar */}
-        <Card style={{ padding: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{
-            width: "48px", height: "48px", borderRadius: "12px",
-            background: "rgba(237, 108, 2, 0.1)", color: "#ed6c02",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px"
-          }}>
-            <FontAwesomeIcon icon={faClockRotateLeft} />
-          </div>
-          <div>
-            <div style={{ color: "var(--text-muted)", fontSize: "14px", fontWeight: 500 }}>Saldo a Liberar</div>
-            <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-main)", marginTop: "4px" }}>
-              {loading ? (
-                <Skeleton width="120px" height="34px" />
-              ) : (
-                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.pendingCommissions)
-              )}
-            </div>
-          </div>
-        </Card>
-
-        {/* Card: Total de Indicações */}
-        <Card style={{ padding: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{
-            width: "48px", height: "48px", borderRadius: "12px",
-            background: "rgba(156, 39, 176, 0.1)", color: "#9c27b0",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px"
-          }}>
-            <FontAwesomeIcon icon={faChartLine} />
-          </div>
-          <div>
-            <div style={{ color: "var(--text-muted)", fontSize: "14px", fontWeight: 500 }}>Total de Indicações</div>
-            <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-main)", marginTop: "4px" }}>
-              {loading ? (
-                <Skeleton width="60px" height="34px" />
-              ) : (
-                stats.totalConversions
-              )}
-            </div>
-          </div>
-        </Card>
+      <div className="metric-grid">
+        <MetricCard icon={faMoneyBillWave} tone="blue" label="Ganhos Acumulados" loading={loading} value={formatCurrency(stats.totalCommissions)} />
+        <MetricCard icon={faClockRotateLeft} tone="amber" label="Saldo a Liberar" loading={loading} value={formatCurrency(stats.pendingCommissions)} />
+        <MetricCard icon={faChartLine} tone="purple" label="Total de Indicações" loading={loading} value={stats.totalConversions} />
       </div>
 
-      {/* FILTROS E TABELA */}
       <Card>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginBottom: "24px", alignItems: "flex-end" }}>
-          <div style={{ flex: "1 1 300px" }}>
+        <div className="mb-6 flex flex-wrap items-end gap-4">
+          <div className="flex-[1_1_300px]">
             <Select
               label="Buscar por Produto"
               placeholder="Selecione um produto..."
@@ -317,35 +207,24 @@ export default function MinhasVendasPage() {
             />
           </div>
 
-          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", flex: "1 1 300px" }}>
-            <div style={{ flex: 1 }}>
-              <label className="input-label" style={{ display: "block", marginBottom: "8px" }}>Data Inicial</label>
-              <div className="input-field-container">
-                <div className="input-field" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <FontAwesomeIcon icon={faCalendarAlt} style={{ color: "var(--input-icon)" }} />
-                  <input
-                    type="date"
-                    style={{ border: "none", background: "transparent", outline: "none", color: "var(--text-main)", flex: 1 }}
-                    value={dateStart}
-                    onChange={(e) => setDateStart(e.target.value)}
-                  />
-                </div>
-              </div>
+          <div className="flex flex-[1_1_300px] flex-wrap gap-4">
+            <div className="flex-1">
+              <Input
+                type="date"
+                label="Data Inicial"
+                icon={<FontAwesomeIcon icon={faCalendarAlt} />}
+                value={dateStart}
+                onChange={(e) => setDateStart(e.target.value)}
+              />
             </div>
-
-            <div style={{ flex: 1 }}>
-              <label className="input-label" style={{ display: "block", marginBottom: "8px" }}>Data Final</label>
-              <div className="input-field-container">
-                <div className="input-field" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <FontAwesomeIcon icon={faCalendarAlt} style={{ color: "var(--input-icon)" }} />
-                  <input
-                    type="date"
-                    style={{ border: "none", background: "transparent", outline: "none", color: "var(--text-main)", flex: 1 }}
-                    value={dateEnd}
-                    onChange={(e) => setDateEnd(e.target.value)}
-                  />
-                </div>
-              </div>
+            <div className="flex-1">
+              <Input
+                type="date"
+                label="Data Final"
+                icon={<FontAwesomeIcon icon={faCalendarAlt} />}
+                value={dateEnd}
+                onChange={(e) => setDateEnd(e.target.value)}
+              />
             </div>
           </div>
         </div>
@@ -360,7 +239,6 @@ export default function MinhasVendasPage() {
         />
       </Card>
 
-      {/* MODAL DE DETALHES DO PEDIDO */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -368,62 +246,31 @@ export default function MinhasVendasPage() {
         size="md"
       >
         {selectedSale && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: "16px"
-            }}>
-              <div style={{ padding: "16px", background: "var(--hover)", borderRadius: "8px" }}>
-                <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>ID do Pedido</p>
-                <p style={{ margin: 0, fontWeight: 600 }}>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4">
+              <div className="soft-panel">
+                <p className="metric-label mb-1">ID do Pedido</p>
+                <p className="font-semibold text-main">
                   #DX-{selectedSale.id ? String(selectedSale.id).substring(0, 8) : "------"}
                 </p>
               </div>
-              <div style={{ padding: "16px", background: "var(--hover)", borderRadius: "8px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>Status da Comissão</p>
-                <div style={{ marginTop: "4px" }}>
-                  {(() => {
-                    const badge = getCommissionStatusBadge(selectedSale.isLiberated, selectedSale.status);
-                    return (
-                      <Badge bg={badge.bg} color={badge.color} dotColor={badge.color}>
-                        {badge.text}
-                      </Badge>
-                    );
-                  })()}
-                </div>
+              <div className="soft-panel">
+                <p className="metric-label mb-2">Status da Comissão</p>
+                <CommissionStatusBadge sale={selectedSale} />
               </div>
             </div>
 
-            <h4 style={{ margin: "8px 0 0 0", fontSize: "16px" }}>Itens Comprados</h4>
-            <div style={{ border: "1px solid var(--border)", borderRadius: "8px", overflow: "hidden" }}>
+            <h4 className="section-title mt-2 text-base">Itens Comprados</h4>
+            <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
               {selectedSale.items.map((item, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: "16px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    borderBottom: idx < selectedSale.items.length - 1 ? "1px solid var(--border)" : "none",
-                    background: "var(--card-bg)"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{
-                      width: "36px", height: "36px", borderRadius: "8px",
-                      background: "rgba(0,0,0,0.03)", display: "flex", alignItems: "center", justifyContent: "center"
-                    }}>
-                      <FontAwesomeIcon icon={faBoxOpen} style={{ color: "var(--text-muted)" }} />
+                <div key={idx} className="flex items-center justify-between bg-card p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="icon-tile icon-tile--sm">
+                      <FontAwesomeIcon icon={faBoxOpen} />
                     </div>
-                    <span style={{ fontWeight: 500, fontSize: "15px" }}>{item.product_name}</span>
+                    <span className="text-[15px] font-medium text-main">{item.product_name}</span>
                   </div>
-                  <div style={{
-                    background: "var(--pink-light)", color: "var(--card-bg)",
-                    padding: "4px 10px", borderRadius: "100px", fontSize: "13px", fontWeight: "bold"
-                  }}>
-                    {item.quantity}x
-                  </div>
+                  <Badge tone="brand">{item.quantity}x</Badge>
                 </div>
               ))}
             </div>

@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/src/lib/utils";
 import { getAuthenticatedAdmin } from "@/src/lib/auth/session";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { PayoutService } from "@/src/services/payout.service";
@@ -29,7 +30,7 @@ export async function GET() {
         try {
           const data = await payoutService.calculateAffiliateOwed(a.id);
           return { ...data, error: null };
-        } catch (err: any) {
+        } catch (err) {
           return {
             affiliateId: a.id,
             name: a.name,
@@ -41,7 +42,7 @@ export async function GET() {
             owed: 0,
             orderCount: 0,
             lastPayoutDate: null,
-            error: err.message || "Erro ao calcular",
+            error: getErrorMessage(err, "Erro ao calcular"),
           };
         }
       })
@@ -51,9 +52,9 @@ export async function GET() {
     results.sort((a, b) => b.owed - a.owed);
 
     return Response.json({ data: results });
-  } catch (err: any) {
+  } catch (err) {
     console.error("GET /api/admin/payouts/batch-calculate error:", err);
-    return Response.json({ error: err.message || "Erro interno do servidor" }, { status: 500 });
+    return Response.json({ error: getErrorMessage(err, "Erro interno do servidor") }, { status: 500 });
   }
 }
 
@@ -85,8 +86,8 @@ export async function POST(request: Request) {
     }
 
     return Response.json({ data: payout }, { status: 201 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("POST /api/admin/payouts/batch-calculate error:", err);
-    return Response.json({ error: err.message || "Erro interno do servidor" }, { status: 500 });
+    return Response.json({ error: getErrorMessage(err, "Erro interno do servidor") }, { status: 500 });
   }
 }

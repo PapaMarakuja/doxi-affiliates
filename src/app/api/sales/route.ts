@@ -1,6 +1,7 @@
 import { getAuthenticatedAffiliate } from "@/src/lib/auth/session";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
-import { getAffiliateDataStartDate } from "@/src/lib/utils";
+import { calculateOrderCommission, getAffiliateDataStartDate, getOrderItemName } from "@/src/lib/utils";
+import type { OrderWithItems } from "@/src/types/orders";
 
 export async function GET(request: Request) {
   const { data: affiliate, error: authError } = await getAuthenticatedAffiliate();
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
       .from("orders")
       .select(`
         id,
-        shopify_order_id,
+        external_order_id,
         created_at,
         financial_status,
         total_amount,
@@ -47,6 +48,8 @@ export async function GET(request: Request) {
         shipping_cost,
         order_items (
           product_name,
+          variant_label,
+          products ( name ),
           quantity
         )
       `)
@@ -69,13 +72,9 @@ export async function GET(request: Request) {
     let pendingCommissions = 0;
     let totalConversions = 0;
 
-    const sales = (ordersData || []).map((o: any) => {
-      // Calculate commission
-      const base = o.total_amount - (o.total_discounts ?? 0) - (o.shipping_cost ?? 0);
-      let commission = 0;
-      if (base > 0 && rate > 0) {
-        commission = base * (rate / 100);
-      }
+    // Without generated DB types, supabase-js types the many-to-one `products` embed as an array (it is an object at runtime).
+    const sales = ((ordersData || []) as unknown as OrderWithItems[]).map((o) => {
+      const commission = calculateOrderCommission(o, rate);
 
       // Determine if it's paid or pending (warranty period)
       // Generic logic: if paid and older than 7 days, it's liberated.
@@ -95,13 +94,13 @@ export async function GET(request: Request) {
       }
 
       return {
-        id: o.shopify_order_id || o.id,
+        id: o.external_order_id || o.id,
         created_at: o.created_at,
         commission: parseFloat(commission.toFixed(2)),
         status: o.financial_status,
         isLiberated,
-        items: o.order_items.map((item: any) => ({
-          product_name: item.product_name,
+        items: (o.order_items || []).map((item) => ({
+          product_name: getOrderItemName(item),
           quantity: item.quantity,
         })),
       };

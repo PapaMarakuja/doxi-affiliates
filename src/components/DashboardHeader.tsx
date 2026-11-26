@@ -79,7 +79,7 @@ export default function DashboardHeader({
       <header
         className={`dash-header ${sidebarCollapsed ? 'dash-header--collapsed' : 'dash-header--expanded'}`}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="flex items-center gap-4">
           <button className='mobile-menu-btn' onClick={onMobileMenuToggle}>
             <FontAwesomeIcon icon={faBars} />
           </button>

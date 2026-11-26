@@ -1,10 +1,10 @@
 import { ShopifyService } from "@/src/services/shopify.service";
 import { NuvemshopService } from "@/src/services/nuvemshop.service";
-import type { IStoreService, NormalizedOrder } from "@/src/services/storeService.interface";
+import type { IStoreService, NormalizedLineItem, NormalizedOrder } from "@/src/services/storeService.interface";
 import { OrderSyncRepository } from "@/src/repositories/orderSync.repository";
 import type { OrderItemInsert } from "@/src/repositories/orderSync.repository";
 import type { Orders, DashboardData, DashboardSyncResult, StoreSyncResult, Coupon, OrderSource } from "@/src/types";
-import { getAffiliateDataStartDate } from "@/src/lib/utils";
+import { calculateOrderCommission, getAffiliateDataStartDate } from "@/src/lib/utils";
 
 const SHOPIFY_SUNSET_DATE = process.env.SHOPIFY_SUNSET_DATE ?? "2026-09-30";
 
@@ -113,22 +113,69 @@ export class OrderSyncService {
 
   private mapLineItems(
     orders: NormalizedOrder[],
-    externalIdToDbIdMap: Map<string, string>
+    externalIdToDbIdMap: Map<string, string>,
+    productIdMap: Map<string, string>
   ): OrderItemInsert[] {
     const items: OrderItemInsert[] = [];
     for (const order of orders) {
       const dbOrderId = externalIdToDbIdMap.get(order.externalId);
       if (!dbOrderId) continue;
       for (const lineItem of order.lineItems) {
+        const productId = lineItem.externalProductId ? productIdMap.get(lineItem.externalProductId) ?? null : null;
         items.push({
           order_id: dbOrderId,
-          product_name: lineItem.title,
+          product_id: productId,
+          // Name snapshot only when the item could not be linked, so it is never lost.
+          product_name: productId ? null : lineItem.productName,
+          variant_label: lineItem.variantLabel,
           quantity: lineItem.quantity,
           unit_price: parseFloat(lineItem.price),
         });
       }
     }
     return items;
+  }
+
+  /**
+   * Garante que todo produto vendido exista em `products`.
+   * Não existe -> cria (com link da loja). Existe -> só reaproveita o id.
+   * @returns Map external_product_id → products.id
+   */
+  private async ensureProducts(store: IStoreService, orders: NormalizedOrder[]): Promise<Map<string, string>> {
+    const catalog = new Map<string, NormalizedLineItem>();
+    for (const order of orders) {
+      for (const item of order.lineItems) {
+        if (item.externalProductId && !catalog.has(item.externalProductId)) catalog.set(item.externalProductId, item);
+      }
+    }
+    if (catalog.size === 0) return new Map();
+
+    try {
+      const externalIds = [...catalog.keys()];
+      const existing = await this.repo.getProductIdsByExternalIds(store.source, externalIds);
+      const missing = [...catalog.entries()].filter(([id]) => !existing.has(id));
+      if (missing.length === 0) return existing;
+
+      const urls = await store.getProductUrls(missing.map(([id]) => id)).catch((err) => {
+        console.error(`[OrderSync][${store.source}] Erro ao buscar links dos produtos:`, err);
+        return new Map<string, string>();
+      });
+
+      await this.repo.insertProducts(
+        missing.map(([id, item]) => ({
+          source: store.source,
+          external_product_id: id,
+          name: item.productName,
+          url: urls.get(id) ?? null,
+          image_url: item.imageUrl,
+        }))
+      );
+      return this.repo.getProductIdsByExternalIds(store.source, externalIds);
+    } catch (err) {
+      // Items are still saved, falling back to the name snapshot.
+      console.error(`[OrderSync][${store.source}] Erro ao salvar produtos:`, err);
+      return new Map();
+    }
   }
 
   private async getExistingOrderIds(
@@ -143,9 +190,10 @@ export class OrderSyncService {
     orders: NormalizedOrder[],
     coupons: Coupon[],
     apiStatus: string,
-    source: OrderSource,
+    store: IStoreService,
     syncedByUserId?: string
   ): Promise<StoreSyncResult> {
+    const source = store.source;
     if (orders.length === 0) {
       await this.repo.updateSyncState(apiStatus, source, syncedByUserId, apiStatus === "success");
       return { newOrders: 0, updatedOrders: 0, apiStatus, error: null };
@@ -225,7 +273,8 @@ export class OrderSyncService {
       rows.map((r) => [r.external_order_id, r.id])
     );
 
-    const lineItems = this.mapLineItems(orders, externalIdToDbIdMap);
+    const productIdMap = await this.ensureProducts(store, orders);
+    const lineItems = this.mapLineItems(orders, externalIdToDbIdMap, productIdMap);
     const { error: itemsError } = await this.repo.upsertOrderItems(lineItems);
 
     if (itemsError) {
@@ -250,7 +299,7 @@ export class OrderSyncService {
 
     console.log(`[Sync][${role}][${source}] ${orders.length} orders fetched`);
 
-    const result = await this.populateOrders(orders, coupons, apiStatus, source, syncedByUserId);
+    const result = await this.populateOrders(orders, coupons, apiStatus, store, syncedByUserId);
 
     console.log(`[Sync][${role}][${source}] newOrders: ${result.newOrders} | updatedOrders: ${result.updatedOrders} | error: ${result.error}`);
 
@@ -354,9 +403,7 @@ export class OrderSyncService {
       if (Number.isNaN(orderCreatedAtMs)) return 0;
       if (affiliateMeta.createdAtMs !== null && orderCreatedAtMs < affiliateMeta.createdAtMs) return 0;
 
-      const base = o.total_amount - (o.total_discounts ?? 0) - (o.shipping_cost ?? 0);
-      if (base <= 0) return 0;
-      return base * (affiliateMeta.commissionRate / 100);
+      return calculateOrderCommission(o, affiliateMeta.commissionRate);
     };
 
     const paidOrders = orders.filter((o) => o.financial_status === "paid");

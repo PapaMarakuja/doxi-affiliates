@@ -21,6 +21,10 @@ export function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 }
 
+export function formatNumber(value: number) {
+  return new Intl.NumberFormat('pt-BR').format(value || 0);
+}
+
 export function formatDate(date: string | Date, includeTime: boolean = false) {
   if (!date) return "-";
   const d = typeof date === "string" ? new Date(date) : date;
@@ -35,16 +39,16 @@ export function formatDate(date: string | Date, includeTime: boolean = false) {
 export interface OrderForCommission {
   total_amount: number;
   shipping_cost: number;
-  total_discounts: number;
 }
 
 /**
  * Calcula a comissão de uma ordem baseada no BCC (Base de Cálculo de Comissão).
- * BCC = total_amount - shipping_cost - total_discounts
+ * BCC = total_amount - shipping_cost
+ * total_amount já vem líquido do desconto (Shopify current_total_price / Nuvemshop total): NÃO subtrair total_discounts de novo.
  * Comissão = BCC * (rate / 100)
  */
 export function calculateOrderCommission(order: OrderForCommission, rate: number): number {
-  const bcc = order.total_amount - (order.shipping_cost || 0) - (order.total_discounts || 0);
+  const bcc = order.total_amount - (order.shipping_cost || 0);
   if (bcc <= 0 || rate <= 0) return 0;
   return bcc * (rate / 100);
 }
@@ -70,4 +74,18 @@ export function scrollToElement(target: Element | null | undefined, options?: Sc
   } catch {
     target.scrollIntoView();
   }
+}
+
+export function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
+/** Display name of an order item: linked product name (or legacy snapshot) + variant, e.g. "Pijama X (M)". */
+export function getOrderItemName(item: {
+  product_name: string | null;
+  variant_label: string | null;
+  products: { name: string } | null;
+}): string {
+  const name = item.products?.name ?? item.product_name ?? "Produto removido";
+  return item.variant_label ? `${name} (${item.variant_label})` : name;
 }

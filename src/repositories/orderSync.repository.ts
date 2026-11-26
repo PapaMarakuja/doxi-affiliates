@@ -1,12 +1,12 @@
-import { createSupabaseServerClient } from "@/src/lib/supabase/server";
-import type { Orders, SyncState, Coupon, Affiliate, OrderSource } from "@/src/types";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/src/lib/supabase/server";
+import type { Orders, SyncState, Coupon, Affiliate, OrderSource, OrderItem, Product } from "@/src/types";
 
-export interface OrderItemInsert {
-  order_id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-}
+export type OrderItemInsert = Pick<
+  OrderItem,
+  "order_id" | "product_id" | "product_name" | "variant_label" | "quantity" | "unit_price"
+>;
+
+export type ProductInsert = Pick<Product, "source" | "external_product_id" | "name" | "url" | "image_url">;
 
 interface CustomerUpsert {
   external_customer_id: string;
@@ -83,6 +83,31 @@ export class OrderSyncRepository {
     }
 
     return { count: items.length, error: null };
+  }
+
+  /** Map external_product_id → products.id. Service client: the catalog is shared and affiliates also run the sync. */
+  async getProductIdsByExternalIds(source: OrderSource, externalIds: string[]): Promise<Map<string, string>> {
+    if (externalIds.length === 0) return new Map();
+    const supabase = await createSupabaseServiceClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, external_product_id")
+      .eq("source", source)
+      .in("external_product_id", externalIds);
+    if (error) throw new Error(error.message);
+    return new Map(
+      ((data ?? []) as Pick<Product, "id" | "external_product_id">[]).map((p) => [p.external_product_id, p.id])
+    );
+  }
+
+  /** Inserts only new products; existing ones (e.g. created by a concurrent sync) are left untouched. */
+  async insertProducts(products: ProductInsert[]): Promise<void> {
+    if (products.length === 0) return;
+    const supabase = await createSupabaseServiceClient();
+    const { error } = await supabase
+      .from("products")
+      .upsert(products, { onConflict: "source,external_product_id", ignoreDuplicates: true });
+    if (error) throw new Error(error.message);
   }
 
   async getAllOrders(): Promise<Orders[]> {

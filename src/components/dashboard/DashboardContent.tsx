@@ -31,19 +31,10 @@ import type { DashboardData, Affiliate, Coupon } from '@/src/types';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useToast } from '@/src/contexts/ToastContext';
 import { Card } from '@/src/components/ui/Card';
+import { formatCurrency, formatNumber } from '@/src/lib/utils';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-const formatBRL = (value: number) => {
-  return value.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  });
-};
-
-const formatNumber = (value: number) => {
-  return value.toLocaleString('pt-BR');
-};
 
 const AFFILIATE_VISIBLE_STATS = new Set([
   'coupon-sales',
@@ -72,7 +63,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
           <span className='dash-chart-tooltip-label'>{label}</span>
         </div>
         <div className='dash-chart-tooltip-body'>
-          <span className='dash-chart-tooltip-value'>{formatBRL(payload[0].value)}</span>
+          <span className='dash-chart-tooltip-value'>{formatCurrency(payload[0].value)}</span>
           <span className='dash-chart-tooltip-sub'>Comissão total</span>
         </div>
       </div>
@@ -230,28 +221,28 @@ export default function DashboardContent() {
       id: 'total-revenue',
       label: 'Receita Total',
       icon: faChartSimple,
-      value: dashData ? formatBRL(dashData.stats.totalRevenue) : '—',
+      value: dashData ? formatCurrency(dashData.stats.totalRevenue) : '—',
       accentClass: 'stat-card-icon--navy',
     },
     {
       id: 'monthly-revenue',
       label: 'Receita do Mês',
       icon: faChartSimple,
-      value: dashData ? formatBRL(dashData.stats.monthlyRevenue) : '—',
+      value: dashData ? formatCurrency(dashData.stats.monthlyRevenue) : '—',
       accentClass: 'stat-card-icon--navy',
     },
     {
       id: 'total-commissions',
       label: 'Comissões Totais',
       icon: faCoins,
-      value: dashData ? formatBRL(dashData.stats.totalCommissions) : '—',
+      value: dashData ? formatCurrency(dashData.stats.totalCommissions) : '—',
       accentClass: 'stat-card-icon--green',
     },
     {
       id: 'monthly-commissions',
       label: 'Comissões do Mês',
       icon: faCalendarDay,
-      value: dashData ? formatBRL(dashData.stats.monthlyCommissions) : '—',
+      value: dashData ? formatCurrency(dashData.stats.monthlyCommissions) : '—',
       accentClass: 'stat-card-icon--blue',
     },
   ];
@@ -303,15 +294,15 @@ export default function DashboardContent() {
         <Card className="transition-all duration-300">
           {initialLoading ? (
             <div className="dash-link-card-body">
-              <div className="dash-link-card-info" style={{ width: '100%' }}>
+              <div className="dash-link-card-info w-full">
                 <div className="dash-link-card-header">
                   <Skeleton width="52px" height="52px" borderRadius="50%" />
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     <Skeleton width="60%" height="24px" className="mb-2" />
                     <Skeleton width="40%" height="16px" />
                   </div>
                 </div>
-                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="mt-4 flex flex-col gap-2">
                   <Skeleton width="100%" height="16px" />
                   <Skeleton width="90%" height="16px" />
                   <Skeleton width="50%" height="16px" />
@@ -320,7 +311,7 @@ export default function DashboardContent() {
               <div className="dash-link-card-action-zone">
                 <Skeleton width="120px" height="16px" className="mb-2" />
                 <Skeleton width="100%" height="48px" borderRadius="12px" />
-                <Skeleton width="150px" height="16px" style={{ marginTop: '8px' }} />
+                <Skeleton width="150px" height="16px" className="mt-2" />
               </div>
             </div>
           ) : (
@@ -332,7 +323,7 @@ export default function DashboardContent() {
                       <FontAwesomeIcon icon={faRocket} />
                     </div>
                     <div>
-                      <h3 className="dash-link-card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h3 className="dash-link-card-title flex flex-wrap items-center gap-2">
                         Facilite suas indicações com seu Link Exclusivo!
                       </h3>
                       <p className="dash-link-card-subtitle">
@@ -341,15 +332,15 @@ export default function DashboardContent() {
                     </div>
                   </div>
 
-                  <div className="dash-link-card-description" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-                    <p style={{ margin: 0 }}>
+                  <div className="dash-link-card-description mt-2 flex flex-col gap-2.5">
+                    <p>
                       Para te ajudar a divulgar e vender mais, criamos um link de indicação personalizado para você!
                     </p>
-                    <p style={{ margin: 0 }}>
-                      Quando um cliente clica no seu link, o cupom <strong style={{ color: 'var(--pink-dark)' }}>{featuredCoupon.code}</strong> é aplicado de forma automática no carrinho de compras.
+                    <p>
+                      Quando um cliente clica no seu link, o cupom <strong className="text-brand">{featuredCoupon.code}</strong> é aplicado de forma automática no carrinho de compras.
                     </p>
-                    <p style={{ margin: 0 }}>
-                      E o melhor: com o nosso <strong style={{ color: 'var(--pink-dark)' }}>Cookie de 7 dias</strong>, mesmo se ele fechar a loja e comprar em até uma semana, a comissão continua sendo sua!
+                    <p>
+                      E o melhor: com o nosso <strong className="text-brand">Cookie de 7 dias</strong>, mesmo se ele fechar a loja e comprar em até uma semana, a comissão continua sendo sua!
                     </p>
                   </div>
                 </div>
@@ -370,7 +361,7 @@ export default function DashboardContent() {
                     </button>
                   </div>
                   <div className="dash-link-card-badge">
-                    <FontAwesomeIcon icon={faCircleCheck} style={{ marginRight: '6px', fontSize: '12px' }} />
+                    <FontAwesomeIcon icon={faCircleCheck} className="mr-1.5 text-xs" />
                     Cookie ativo por 7 dias
                   </div>
                 </div>
@@ -385,8 +376,7 @@ export default function DashboardContent() {
           <h3 className='dash-chart-title'>
             <FontAwesomeIcon
               icon={faChartSimple}
-              className='text-muted mr-2'
-              style={{ fontSize: '16px' }}
+              className='mr-2 text-base text-muted'
             />
             Desempenho de Comissões
           </h3>

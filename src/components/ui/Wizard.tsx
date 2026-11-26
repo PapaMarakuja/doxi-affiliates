@@ -204,7 +204,6 @@ export function Wizard({
         className="wizard"
         ref={wizardRef}
         tabIndex={-1}
-        style={{ outline: "none" }}
       >
         {/* Step Indicator Bar */}
         <div className="wizard-steps" role="list" aria-label="Etapas do formulário">
@@ -276,7 +275,7 @@ export function Wizard({
                   >
                     <div className="wizard-substep-dot">
                       {isSubCompleted && (
-                        <FontAwesomeIcon icon={faCheck} style={{ fontSize: "8px" }} />
+                        <FontAwesomeIcon icon={faCheck} className="text-[8px]" />
                       )}
                     </div>
                     <span className="wizard-substep-label">{sub.label}</span>

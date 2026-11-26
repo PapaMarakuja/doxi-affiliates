@@ -4,7 +4,7 @@ import type {
   NormalizedOrder,
   NormalizedCustomer,
 } from "./storeService.interface";
-import type { NuvemshopOrder } from "@/src/types";
+import type { NuvemshopOrder, NuvemshopProductUrl } from "@/src/types";
 
 // ── Variáveis de ambiente ──────────────────────────────────────────────────
 const NUVEMSHOP_USER_ID = process.env.NUVEMSHOP_USER_ID!;
@@ -137,7 +137,10 @@ export class NuvemshopService implements IStoreService {
       firstDiscountCode,
       discountCodes,
       lineItems: (order.products ?? []).map((p) => ({
-        title: p.name,
+        externalProductId: p.product_id ? String(p.product_id) : null,
+        productName: p.name_without_variants || p.name,
+        variantLabel: p.variant_values?.length ? p.variant_values.join(" / ") : null,
+        imageUrl: p.image?.src ?? null,
         quantity: p.quantity,
         // Guard: Nuvemshop may return null for price when it lives on the variant.
         // Fall back to "0" to avoid DB NOT NULL violations.
@@ -214,5 +217,24 @@ export class NuvemshopService implements IStoreService {
     } catch {
       return null;
     }
+  }
+
+  /** Lists the catalog (few pages) instead of one request per product, to stay under the rate limit. */
+  async getProductUrls(externalProductIds: string[]): Promise<Map<string, string>> {
+    const wanted = new Set(externalProductIds);
+    const urls = new Map<string, string>();
+    let endpoint: string | undefined = "/products?per_page=200&fields=id,canonical_url";
+
+    while (endpoint && urls.size < wanted.size) {
+      const { data, nextPage }: { data: NuvemshopProductUrl[]; nextPage: string | undefined } =
+        await this.fetchFromNuvemshop<NuvemshopProductUrl[]>(endpoint);
+      for (const product of data) {
+        const id = String(product.id);
+        if (wanted.has(id) && product.canonical_url) urls.set(id, product.canonical_url);
+      }
+      endpoint = nextPage?.replace(this.baseUrl, "");
+    }
+
+    return urls;
   }
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "./Button";
+import { Skeleton } from "./Skeleton";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { scrollToElement } from "@/src/lib/utils";
@@ -9,6 +10,8 @@ export interface Column<T> {
   header: string;
   sortable?: boolean;
   style?: React.CSSProperties;
+  /** Lets long text wrap instead of forcing horizontal scroll. */
+  wrap?: boolean;
   render?: (item: T) => React.ReactNode;
 }
 
@@ -24,9 +27,14 @@ export interface TableProps<T> {
   onSortChange?: (orderBy: string, orderDesc: boolean) => void;
   loading?: boolean;
   onRowClick?: (item: T) => void;
+  emptyMessage?: React.ReactNode;
+  /** Hides the footer (count + pager). */
+  hidePagination?: boolean;
+  /** Drops the 768px min-width, for narrow containers like modals. */
+  compact?: boolean;
 }
 
-export function Table<T extends Record<string, any>>({
+export function Table<T extends object>({
   data,
   columns,
   totalCount,
@@ -38,6 +46,9 @@ export function Table<T extends Record<string, any>>({
   onSortChange,
   loading = false,
   onRowClick,
+  emptyMessage = "Nenhum registro encontrado.",
+  hidePagination = false,
+  compact = false,
 }: TableProps<T>) {
   // Client state
   const [clientPage, setClientPage] = useState(1);
@@ -62,7 +73,7 @@ export function Table<T extends Record<string, any>>({
   }, [actualPage]);
 
   // Sorting
-  let processedData = [...data];
+  const processedData = [...data];
   if (!isServerSorted && actualOrderBy) {
     processedData.sort((a, b) => {
       const valA = a[actualOrderBy as keyof T];
@@ -108,34 +119,23 @@ export function Table<T extends Record<string, any>>({
   };
 
   return (
-    <div className="ui-table-container" style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
+    <div className="ui-table-container">
       <div ref={tableTopRef} />
-      <div style={{ overflowX: "auto", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-bg)", WebkitOverflowScrolling: "touch" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "768px" }}>
+      <div className="ui-table-scroll">
+        <table className={`ui-table ${compact ? "ui-table--compact" : ""}`}>
           <thead>
-            <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--hover)" }}>
+            <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className="table-th-text"
-                  style={{
-                    padding: "12px 16px",
-                    cursor: col.sortable ? "pointer" : "default",
-                    userSelect: "none",
-                    fontWeight: 600,
-                    color: "var(--text-muted)",
-                    fontSize: "12px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                    whiteSpace: "nowrap",
-                    ...col.style
-                  }}
+                  className={`table-th-text ${col.sortable ? "is-sortable" : ""}`}
+                  style={col.style}
                   onClick={() => col.sortable && handleSort(col.key)}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div className="ui-table-th-inner">
                     {col.header}
                     {col.sortable && actualOrderBy === col.key && (
-                      <span style={{ fontSize: "12px", color: "var(--pink-dark)" }}>{actualOrderDesc ? "↓" : "↑"}</span>
+                      <span className="ui-table-sort">{actualOrderDesc ? "↓" : "↑"}</span>
                     )}
                   </div>
                 </th>
@@ -145,35 +145,28 @@ export function Table<T extends Record<string, any>>({
           <tbody>
             {loading ? (
               Array.from({ length: limit }).map((_, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
+                <tr key={i}>
                   {columns.map((col) => (
-                    <td key={col.key} style={{ padding: "12px 16px" }}>
-                      <div className="ui-skeleton" style={{ height: "16px", width: "80%", borderRadius: "4px" }} />
+                    <td key={col.key}>
+                      <Skeleton height="16px" width="80%" borderRadius="4px" />
                     </td>
                   ))}
                 </tr>
               ))
             ) : displayData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
-                  Nenhum registro encontrado.
-                </td>
+                <td colSpan={columns.length} className="ui-table-empty">{emptyMessage}</td>
               </tr>
             ) : (
               displayData.map((row, i) => (
                 <tr
                   key={i}
-                  style={{
-                    borderBottom: "1px solid var(--border)",
-                    transition: "background 0.2s",
-                    cursor: onRowClick ? "pointer" : "default"
-                  }}
-                  className="table-row-hover"
-                  onClick={() => onRowClick && onRowClick(row)}
+                  className={`table-row-hover ${onRowClick ? "is-clickable" : ""}`}
+                  onClick={() => onRowClick?.(row)}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} style={{ padding: "12px 16px", color: "var(--text-main)", fontSize: "14px", whiteSpace: "nowrap" }}>
-                      {col.render ? col.render(row) : row[col.key as keyof T]}
+                    <td key={col.key} className={col.wrap ? "ui-table-td-wrap" : undefined}>
+                      {col.render ? col.render(row) : (row[col.key as keyof T] as React.ReactNode)}
                     </td>
                   ))}
                 </tr>
@@ -183,31 +176,31 @@ export function Table<T extends Record<string, any>>({
         </table>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
-        <div style={{ fontSize: "14px", color: "var(--text-muted)" }}>
-          Mostrando {displayData.length} de {actualTotalCount} registros
-        </div>
+      {!hidePagination && (
+        <div className="ui-table-footer">
+          <div>Mostrando {displayData.length} de {actualTotalCount} registros</div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          <Button
-            disabled={actualPage <= 1 || loading}
-            onClick={() => handlePageChange(actualPage - 1)}
-            style={{ padding: "8px", minHeight: "unset", width: "auto" }}
-          >
-            <FontAwesomeIcon icon={faArrowLeft} />
-          </Button>
-          <span style={{ fontSize: "14px", fontWeight: 500 }}>
-            Página {actualPage} de {totalPages}
-          </span>
-          <Button
-            disabled={actualPage >= totalPages || loading}
-            onClick={() => handlePageChange(actualPage + 1)}
-            style={{ padding: "8px", minHeight: "unset", width: "auto" }}
-          >
-            <FontAwesomeIcon icon={faArrowRight} />
-          </Button>
+          <div className="ui-table-pager">
+            <Button
+              className="ui-table-pager-btn"
+              disabled={actualPage <= 1 || loading}
+              onClick={() => handlePageChange(actualPage - 1)}
+              aria-label="Página anterior"
+            >
+              <FontAwesomeIcon icon={faArrowLeft} />
+            </Button>
+            <span>Página {actualPage} de {totalPages}</span>
+            <Button
+              className="ui-table-pager-btn"
+              disabled={actualPage >= totalPages || loading}
+              onClick={() => handlePageChange(actualPage + 1)}
+              aria-label="Próxima página"
+            >
+              <FontAwesomeIcon icon={faArrowRight} />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -12,13 +12,25 @@ export interface NuvemshopCouponItem {
 
 export interface NuvemshopLineItem {
   id: number;
+  /** Nome com a variante, ex.: "Pijama X (M)". */
   name: string;
+  name_without_variants?: string;
+  product_id: number | null;
+  variant_id: number | null;
+  variant_values?: string[];
+  image?: { src: string } | null;
   quantity: number;
   /**
    * Preço unitário. A Nuvemshop pode retornar null quando o preço está
    * definido no nível da variante, não do produto raiz.
    */
   price: string | null;
+}
+
+/** Campos usados de GET /products (com `fields=id,canonical_url`). */
+export interface NuvemshopProductUrl {
+  id: number;
+  canonical_url: string | null;
 }
 
 /** Shape esperado da entidade "Order" na API da Nuvemshop. */

@@ -49,7 +49,9 @@ export async function GET() {
       );
       let affAchRewards = 0;
       affAchs.forEach(a => {
-        if (a.achievement_definitions) affAchRewards += Number((a.achievement_definitions as any).reward_value || 0);
+        // Supabase types the relation as an array; at runtime it is a single object. flat() handles both.
+        const definition = [a.achievement_definitions].flat()[0];
+        if (definition) affAchRewards += Number(definition.reward_value || 0);
       });
 
       // Already paid/pending

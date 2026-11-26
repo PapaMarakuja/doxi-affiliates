@@ -1,0 +1,1115 @@
+/* ============================================================
+   Cadastro de Afiliadas — Layout (Card Grande Responsivo)
+   ============================================================ */
+
+.cad-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+  padding: 40px 24px 60px;
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.cad-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 980px;
+  margin-bottom: 4px;
+  padding-top: 8px;
+}
+
+.cad-logo-wrap {
+  width: 175px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.cad-card-wrap {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  transition: all 0.3s ease;
+}
+
+.cad-card-wrap .ui-card {
+  padding: 40px 48px;
+  border-radius: 24px;
+  box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--border);
+}
+
+.dark .cad-card-wrap .ui-card {
+  box-shadow: 0 20px 56px -16px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  background: rgba(22, 28, 45, 0.96);
+}
+
+.cad-card-heading {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.cad-card-heading-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.cad-card-heading-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.cad-footer {
+  width: 100%;
+  max-width: 980px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.cad-footer .ui-card {
+  border-radius: 16px;
+  padding: 14px 20px;
+  border: 1px solid var(--border);
+}
+
+/* Responsividade Mobile do Layout de Cadastro */
+@media (max-width: 640px) {
+  .cad-page {
+    padding: 16px 10px 28px;
+    gap: 14px;
+  }
+
+  .cad-header {
+    margin-bottom: 2px;
+    padding-top: 2px;
+  }
+
+  .cad-logo-wrap {
+    width: 140px;
+  }
+
+  .cad-card-wrap .ui-card {
+    padding: 22px 14px;
+    border-radius: 18px;
+  }
+
+  .cad-card-heading {
+    margin-bottom: 20px;
+  }
+
+  .cad-card-heading-title {
+    font-size: 21px;
+  }
+
+  .cad-card-heading-sub {
+    font-size: 13px;
+  }
+
+  .cad-footer .ui-card {
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+  }
+}
+
+/* ── Shared step utilities ── */
+
+.cad-section-intro {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.65;
+  margin-bottom: 20px;
+}
+
+.cad-required-mark {
+  color: var(--pink-dark);
+  font-weight: 700;
+}
+
+.cad-field-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--error-text);
+}
+
+.cad-rules-agreement {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ============================================================
+   Step 1 — Bem-vindo
+   ============================================================ */
+
+.cad-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.cad-welcome-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 10px;
+}
+
+.cad-welcome-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.65;
+  max-width: 480px;
+  margin-bottom: 12px;
+}
+
+.cad-info-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .cad-info-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cad-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+}
+
+.cad-info-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(245, 184, 191, 0.18), rgba(241, 164, 172, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--pink-dark);
+  flex-shrink: 0;
+}
+
+.cad-info-item-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 3px;
+}
+
+.cad-info-item-text {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ============================================================
+   Step 2 — Benefícios (Novo Layout Estruturado)
+   ============================================================ */
+
+.cad-benefits-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Banner de Destaque Inicial ── */
+.cad-benefits-hero-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(245, 184, 191, 0.22) 0%, rgba(249, 228, 224, 0.35) 100%);
+  border: 1.5px solid rgba(241, 164, 172, 0.45);
+  border-radius: var(--border-radius);
+}
+
+.dark .cad-benefits-hero-banner {
+  background: linear-gradient(135deg, rgba(241, 164, 172, 0.1) 0%, rgba(30, 45, 66, 0.45) 100%);
+  border-color: rgba(241, 164, 172, 0.28);
+}
+
+.cad-benefits-hero-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cad-benefits-hero-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--pink-light), var(--pink-dark));
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(241, 164, 172, 0.35);
+}
+
+.cad-benefits-hero-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.cad-benefits-hero-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* ── Blocos Temáticos de Benefícios ── */
+.cad-benefit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  transition: border-color 0.2s ease;
+}
+
+.cad-benefit-block:hover {
+  border-color: var(--pink-light);
+}
+
+.cad-benefit-block-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cad-benefit-block-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(245, 184, 191, 0.25), rgba(241, 164, 172, 0.42));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--pink-dark);
+  flex-shrink: 0;
+}
+
+.cad-benefit-block-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+
+.cad-benefit-block-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cad-benefit-block-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cad-benefit-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.cad-benefit-text strong {
+  color: var(--text-main);
+}
+
+/* ── Ferramentas: Cupom e Link ── */
+.cad-benefit-tools-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .cad-benefit-tools-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cad-tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.cad-tool-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cad-coupon-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1.5px dashed var(--pink-dark);
+  background: rgba(245, 184, 191, 0.08);
+  width: fit-content;
+}
+
+.cad-coupon-display-icon {
+  color: var(--pink-dark);
+  font-size: 12px;
+}
+
+.cad-coupon-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: 0.5px;
+}
+
+.cad-badge-discount {
+  background: linear-gradient(135deg, var(--pink-light), var(--pink-dark));
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.cad-link-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+}
+
+.cad-link-display-icon {
+  color: var(--info);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.cad-link-url {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--info);
+  word-break: break-all;
+  flex: 1;
+}
+
+/* ── Callout de Crescimento da Comissão ── */
+.cad-growth-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 14px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 10px;
+  margin-top: 2px;
+}
+
+.dark .cad-growth-callout {
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.22);
+}
+
+.cad-growth-callout-icon {
+  color: var(--success);
+  font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.cad-growth-callout--brand,
+.dark .cad-growth-callout--brand {
+  background: rgba(245, 184, 191, 0.1);
+  border-color: rgba(245, 184, 191, 0.4);
+}
+
+.cad-growth-callout--brand .cad-growth-callout-icon {
+  color: var(--pink-dark);
+}
+
+.cad-growth-callout strong {
+  display: block;
+  font-size: 13px;
+  color: var(--success);
+  margin-bottom: 2px;
+}
+
+.cad-growth-callout p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Seção de Cálculo da Comissão ── */
+.cad-calculation-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-top: 6px;
+}
+
+.cad-calc-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cad-calc-flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cad-calc-step {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 90px;
+}
+
+.cad-calc-step-label {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.cad-calc-step-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cad-calc-step--base {
+  border-color: rgba(245, 184, 191, 0.6);
+  background: rgba(245, 184, 191, 0.1);
+}
+
+.cad-calc-step--base .cad-calc-step-val {
+  color: var(--pink-dark);
+}
+
+.dark .cad-calc-step--base .cad-calc-step-val {
+  color: var(--pink-light);
+}
+
+.cad-calc-step--rate {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.cad-calc-step--rate .cad-calc-step-val {
+  color: var(--success);
+}
+
+.cad-calc-operator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.cad-calc-result-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.cad-calc-result-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.cad-calc-result-icon {
+  color: var(--pink-dark);
+  font-size: 13px;
+}
+
+.cad-calc-result-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--success);
+}
+
+.cad-calc-result-amount span {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+/* ============================================================
+   Step 3 — Regras (shared sub-step styles)
+   ============================================================ */
+
+.cad-rules-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cad-rules-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cad-rules-header-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(245, 184, 191, 0.2), rgba(241, 164, 172, 0.35));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--pink-dark);
+  flex-shrink: 0;
+}
+
+.cad-rules-header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.cad-rules-header-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.cad-rules-intro {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Dual Column Rules */
+.cad-rules-dual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 580px) {
+  .cad-rules-dual-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cad-rules-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cad-rules-col-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-bottom: 4px;
+}
+
+.cad-rules-col-title--ok {
+  color: var(--success);
+}
+
+.cad-rules-col-title--no {
+  color: var(--error-text);
+}
+
+.cad-rules-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cad-rules-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-main);
+  line-height: 1.5;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+}
+
+.cad-rules-item-icon {
+  margin-top: 3px;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.cad-rules-item-icon--ok {
+  color: var(--success);
+}
+
+.cad-rules-item-icon--no {
+  color: var(--error-text);
+}
+
+/* Channel tags */
+.cad-channel-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.cad-channel-tag--allowed {
+  background: rgba(74, 222, 128, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(74, 222, 128, 0.28);
+}
+
+.cad-channel-tag--forbidden {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--error-text);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.cad-channel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cad-rules-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  padding: 9px 12px;
+  background: rgba(245, 184, 191, 0.08);
+  border-left: 3px solid var(--pink-light);
+  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+/* ============================================================
+   Step 4 — Obrigações
+   ============================================================ */
+
+.cad-obligations {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cad-obligation-items {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 660px) {
+  .cad-obligation-items {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cad-obligation-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+}
+
+.cad-obligation-item--warning {
+  background: rgba(241, 164, 172, 0.07);
+  border-color: rgba(241, 164, 172, 0.35);
+}
+
+.cad-obligation-item-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(245, 184, 191, 0.2), rgba(241, 164, 172, 0.35));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--pink-dark);
+  flex-shrink: 0;
+}
+
+.cad-obligation-item-icon--warning {
+  background: linear-gradient(135deg, rgba(241, 164, 172, 0.2), rgba(241, 100, 120, 0.35));
+  color: #e05168;
+}
+
+.dark .cad-obligation-item-icon--warning {
+  color: var(--pink-light);
+}
+
+.cad-obligation-item-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.cad-obligation-item-text {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ============================================================
+   Step 5 — Dados Cadastrais
+   ============================================================ */
+
+.cad-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cad-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 540px) {
+  .cad-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cad-form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cad-form-section-title-icon {
+  color: var(--pink-dark);
+  font-size: 13px;
+}
+
+.cad-form-section-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* Instagram Metrics Guide */
+.cad-metrics-guide {
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  padding: 12px 14px;
+}
+
+.cad-metrics-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.cad-metrics-guide-title-icon {
+  color: var(--pink-dark);
+}
+
+.cad-metrics-path {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.cad-metrics-path-step {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-main);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.cad-metrics-path-arrow {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.cad-metrics-guide-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cad-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+@media (max-width: 480px) {
+  .cad-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Step 6 — Finalização
+   ============================================================ */
+
+.cad-finalizacao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+.cad-finalizacao-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.14), rgba(34, 197, 94, 0.28));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  color: var(--success);
+  margin-bottom: 16px;
+  animation: cad-pop-in 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes cad-pop-in {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.cad-finalizacao-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
+.cad-finalizacao-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  max-width: 440px;
+  margin: 0 auto 20px;
+}
+
+.cad-finalizacao-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .cad-finalizacao-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cad-finalizacao-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  padding: 14px;
+}
+
+.cad-finalizacao-detail-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(245, 184, 191, 0.18), rgba(241, 164, 172, 0.3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--pink-dark);
+  flex-shrink: 0;
+}
+
+.cad-finalizacao-detail strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.cad-finalizacao-detail p {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cad-finalizacao-note {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* ── Shared auth shell (login + cadastro) ── */
+.cad-logo-wrap img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cad-page--centered {
+  justify-content: center;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+.cad-page--centered .cad-logo-wrap {
+  width: 100%;
+  max-width: 320px;
+}
+
+.cad-card-wrap--narrow,
+.cad-footer--narrow {
+  max-width: 420px;
+}
+
+.cad-footer-link {
+  font-weight: 600;
+  color: var(--pink-dark);
+  text-decoration: none;
+}
+
+.cad-footer-link:hover {
+  color: var(--pink-light);
+}
+
+.cad-card-wrap--narrow .ui-card {
+  padding: 32px 28px;
+}

@@ -10,3 +10,5 @@ export * from "./profile";
 export * from "./sidebarItem";
 export * from "./payout";
 export * from "./customer";
+export * from "./restockSubscription";
+export * from "./product";

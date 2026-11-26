@@ -23,6 +23,7 @@ import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useToast } from '@/src/contexts/ToastContext';
 import { useConfirmDialog } from '@/src/contexts/ConfirmDialogContext';
 import type { Coupon } from '@/src/types';
+import { formatCurrency, formatNumber } from '@/src/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -135,10 +136,6 @@ function sortCoupons(
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-const formatBRL = (value: number) =>
-  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-const formatNumber = (value: number) => value.toLocaleString('pt-BR');
 
 const MONTHS = [
   'Janeiro',
@@ -352,7 +349,7 @@ export default function CuponsPage() {
                 if (val) setFilterMonth(Number(val));
               }}
               clearable={false}
-              style={{ minWidth: '130px' }}
+              className='min-w-[130px]'
             />
             <Select
               options={yearOptions}
@@ -361,7 +358,7 @@ export default function CuponsPage() {
                 if (val) setFilterYear(Number(val));
               }}
               clearable={false}
-              style={{ minWidth: '100px' }}
+              className='min-w-[100px]'
             />
           </div>
           <div className='cupons-actions-buttons'>
@@ -423,7 +420,7 @@ export default function CuponsPage() {
                 </div>
                 <div className='cupons-total-content'>
                   <span className='cupons-total-label'>Receita no mês</span>
-                  <span className='cupons-total-value'>{formatBRL(totals.monthlyRevenue)}</span>
+                  <span className='cupons-total-value'>{formatCurrency(totals.monthlyRevenue)}</span>
                 </div>
               </div>
               <div className='cupons-total-card cupons-total-card--monthly'>
@@ -432,7 +429,7 @@ export default function CuponsPage() {
                 </div>
                 <div className='cupons-total-content'>
                   <span className='cupons-total-label'>Descontos no mês</span>
-                  <span className='cupons-total-value'>{formatBRL(totals.monthlyDiscount)}</span>
+                  <span className='cupons-total-value'>{formatCurrency(totals.monthlyDiscount)}</span>
                 </div>
               </div>
               <div className='cupons-total-card cupons-total-card--monthly'>
@@ -441,7 +438,7 @@ export default function CuponsPage() {
                 </div>
                 <div className='cupons-total-content'>
                   <span className='cupons-total-label'>Comissões no mês</span>
-                  <span className='cupons-total-value'>{formatBRL(totals.monthlyCommission)}</span>
+                  <span className='cupons-total-value'>{formatCurrency(totals.monthlyCommission)}</span>
                 </div>
               </div>
             </div>
@@ -470,7 +467,7 @@ export default function CuponsPage() {
                 <div className='cupons-total-content'>
                   <span className='cupons-total-label'>Receita total</span>
                   <span className='cupons-total-value cupons-total-value--secondary'>
-                    {formatBRL(totals.totalRevenue)}
+                    {formatCurrency(totals.totalRevenue)}
                   </span>
                 </div>
               </div>
@@ -481,7 +478,7 @@ export default function CuponsPage() {
                 <div className='cupons-total-content'>
                   <span className='cupons-total-label'>Descontos totais</span>
                   <span className='cupons-total-value cupons-total-value--secondary'>
-                    {formatBRL(totals.totalDiscount)}
+                    {formatCurrency(totals.totalDiscount)}
                   </span>
                 </div>
               </div>
@@ -492,7 +489,7 @@ export default function CuponsPage() {
                 <div className='cupons-total-content'>
                   <span className='cupons-total-label'>Comissões totais</span>
                   <span className='cupons-total-value cupons-total-value--secondary'>
-                    {formatBRL(totals.totalCommission)}
+                    {formatCurrency(totals.totalCommission)}
                   </span>
                 </div>
               </div>
@@ -526,8 +523,7 @@ export default function CuponsPage() {
                 value={sortDir}
                 onChange={(val) => handleDirChange(val as SortDirection)}
                 clearable={false}
-                className='w-fit'
-                style={{ minWidth: '160px' }}
+                className='w-fit min-w-[160px]'
               />
             </div>
           </div>
@@ -555,7 +551,6 @@ export default function CuponsPage() {
             <button
               className='ui-button w-fit ui-button--success'
               onClick={() => setCreateModalOpen(true)}
-              style={{ gap: '8px' }}
             >
               <FontAwesomeIcon icon={faPlus} />
               Cadastrar primeiro cupom
@@ -587,19 +582,18 @@ export default function CuponsPage() {
                   <p className='cupons-card-month-label'>{displayMonthName}</p>
                   {hasMonthlyCommission ? (
                     <div className='cupons-card-hero'>
-                      <span className='coupon-card-value' style={{ margin: 0 }}>
-                        {formatBRL(cs.monthlyRevenue)}
+                      <span className='coupon-card-value m-0'>
+                        {formatCurrency(cs.monthlyRevenue)}
                       </span>
                       <span className='cupons-card-hero-separator'>|</span>
                       <span
-                        className='cupons-card-hero-revenue'
-                        style={{ alignSelf: 'center', position: 'relative', top: '-2px' }}
+                        className='cupons-card-hero-revenue relative -top-0.5 self-center'
                       >
-                        {formatBRL(cs.monthlyCommission)}
+                        {formatCurrency(cs.monthlyCommission)}
                       </span>
                     </div>
                   ) : (
-                    <p className='coupon-card-value'>{formatBRL(cs.monthlyRevenue)}</p>
+                    <p className='coupon-card-value'>{formatCurrency(cs.monthlyRevenue)}</p>
                   )}
 
                   <p className='coupon-card-uses'>
@@ -607,7 +601,7 @@ export default function CuponsPage() {
                     {cs.monthlyDiscount > 0 && (
                       <span className='cupons-card-discount-inline'>
                         {' '}
-                        · {formatBRL(cs.monthlyDiscount)} desc.
+                        · {formatCurrency(cs.monthlyDiscount)} desc.
                       </span>
                     )}
                   </p>
@@ -616,12 +610,12 @@ export default function CuponsPage() {
                   <div className='cupons-card-total-row'>
                     <span className='cupons-card-total-label'>Total:</span>
                     <span className='cupons-card-total-value'>
-                      {formatBRL(cs.totalRevenue)}
+                      {formatCurrency(cs.totalRevenue)}
                       {hasTotalCommission && (
                         <>
                           <span className='cupons-card-monthly-sep'>|</span>
                           <span className='cupons-card-monthly-commission'>
-                            {formatBRL(cs.totalCommission)}
+                            {formatCurrency(cs.totalCommission)}
                           </span>
                         </>
                       )}{' '}

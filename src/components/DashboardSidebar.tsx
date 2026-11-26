@@ -130,7 +130,7 @@ export default function DashboardSidebar({
           }`}
       >
         <div className={`sidebar-logo ${collapsed ? "sidebar-logo--collapsed" : ""}`}>
-          <div className="sidebar-logo-container" style={{ gap: '10px' }}>
+          <div className="sidebar-logo-container gap-2.5">
             <Image
               src={Logo}
               alt="Doxi Club"

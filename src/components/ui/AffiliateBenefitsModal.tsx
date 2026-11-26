@@ -58,12 +58,12 @@ export function AffiliateBenefitsModal({ isOpen, onClose }: AffiliateBenefitsMod
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div style={{ display: 'flex', alignItems: 'center', height: '32px' }}>
+        <div className="flex h-8 items-center gap-2">
           <Image
             src={Logo}
             alt="Doxi Club"
             height={32}
-            style={{ width: 'auto', height: '100%', marginRight: '8px' }}
+            className="h-full w-auto"
           />
           Seus Benefícios
         </div>
@@ -85,7 +85,7 @@ export function AffiliateBenefitsModal({ isOpen, onClose }: AffiliateBenefitsMod
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div className="flex flex-col gap-6">
             <div>
               <Skeleton width="150px" height="20px" className="mb-2" />
               <Skeleton height="100px" borderRadius="12px" />
@@ -147,7 +147,7 @@ export function AffiliateBenefitsModal({ isOpen, onClose }: AffiliateBenefitsMod
                       }}
                       title="Clique para copiar o cupom"
                     >
-                      <FontAwesomeIcon icon={faTag} style={{ fontSize: '12px', color: 'var(--pink-dark)' }} />
+                      <FontAwesomeIcon icon={faTag} className="text-xs text-brand" />
                       <span className="benefits-coupon-code">{featuredCoupon.code}</span>
                       {featuredCoupon.discount_percentage !== null && (
                         <span className="benefits-coupon-badge">
